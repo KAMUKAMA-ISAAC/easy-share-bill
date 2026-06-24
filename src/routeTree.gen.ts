@@ -16,6 +16,7 @@ import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppGroupsIndexRouteImport } from './routes/_app.groups.index'
 import { Route as AppGroupsNewRouteImport } from './routes/_app.groups.new'
 import { Route as AppGroupsIdRouteImport } from './routes/_app.groups.$id'
+import { Route as AppExpensesNewRouteImport } from './routes/_app.expenses.new'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -51,11 +52,17 @@ const AppGroupsIdRoute = AppGroupsIdRouteImport.update({
   path: '/groups/$id',
   getParentRoute: () => AppRoute,
 } as any)
+const AppExpensesNewRoute = AppExpensesNewRouteImport.update({
+  id: '/expenses/new',
+  path: '/expenses/new',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AppDashboardRoute
+  '/expenses/new': typeof AppExpensesNewRoute
   '/groups/$id': typeof AppGroupsIdRoute
   '/groups/new': typeof AppGroupsNewRoute
   '/groups/': typeof AppGroupsIndexRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AppDashboardRoute
+  '/expenses/new': typeof AppExpensesNewRoute
   '/groups/$id': typeof AppGroupsIdRoute
   '/groups/new': typeof AppGroupsNewRoute
   '/groups': typeof AppGroupsIndexRoute
@@ -74,6 +82,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/expenses/new': typeof AppExpensesNewRoute
   '/_app/groups/$id': typeof AppGroupsIdRoute
   '/_app/groups/new': typeof AppGroupsNewRoute
   '/_app/groups/': typeof AppGroupsIndexRoute
@@ -84,17 +93,26 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/dashboard'
+    | '/expenses/new'
     | '/groups/$id'
     | '/groups/new'
     | '/groups/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/groups/$id' | '/groups/new' | '/groups'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/expenses/new'
+    | '/groups/$id'
+    | '/groups/new'
+    | '/groups'
   id:
     | '__root__'
     | '/'
     | '/_app'
     | '/auth'
     | '/_app/dashboard'
+    | '/_app/expenses/new'
     | '/_app/groups/$id'
     | '/_app/groups/new'
     | '/_app/groups/'
@@ -157,11 +175,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppGroupsIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/expenses/new': {
+      id: '/_app/expenses/new'
+      path: '/expenses/new'
+      fullPath: '/expenses/new'
+      preLoaderRoute: typeof AppExpensesNewRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
+  AppExpensesNewRoute: typeof AppExpensesNewRoute
   AppGroupsIdRoute: typeof AppGroupsIdRoute
   AppGroupsNewRoute: typeof AppGroupsNewRoute
   AppGroupsIndexRoute: typeof AppGroupsIndexRoute
@@ -169,6 +195,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
+  AppExpensesNewRoute: AppExpensesNewRoute,
   AppGroupsIdRoute: AppGroupsIdRoute,
   AppGroupsNewRoute: AppGroupsNewRoute,
   AppGroupsIndexRoute: AppGroupsIndexRoute,
