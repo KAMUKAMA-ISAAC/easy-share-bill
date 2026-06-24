@@ -1,29 +1,143 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { FEATURES, FeatureCard, PublicHeader, StatChip } from "@/components/marketing";
+import { ArrowRight, Check } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Your App" },
-      { name: "description", content: "Replace this with a one-sentence description of your app." },
-      { property: "og:title", content: "Your App" },
-      { property: "og:description", content: "Replace this with a one-sentence description of your app." },
+      { title: "Splitit — Smart expense splitting & guest payment links" },
+      {
+        name: "description",
+        content:
+          "Scan receipts with AI, split flexibly, and share payment links your friends can pay without an account.",
+      },
+      { property: "og:title", content: "Splitit — Smart expense splitting" },
+      {
+        property: "og:description",
+        content: "AI receipts, flexible splits, no-login guest payments.",
+      },
     ],
   }),
-  component: Index,
+  component: Landing,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+function Landing() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="min-h-screen">
+      <PublicHeader />
+
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "var(--gradient-hero)" }}
+        />
+        <div className="relative mx-auto max-w-7xl px-6 pt-20 pb-24 lg:pt-32 lg:pb-32">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/50 backdrop-blur px-3 py-1 mb-6 text-xs">
+              <span className="size-1.5 rounded-full bg-accent animate-pulse" />
+              <span className="text-muted-foreground">
+                AI receipts · flexible splits · guest-friendly links
+              </span>
+            </div>
+            <h1 className="font-display text-5xl md:text-7xl font-semibold leading-[1.05] tracking-tight">
+              Splitting bills,
+              <br />
+              <span className="gradient-text">finally painless.</span>
+            </h1>
+            <p className="mt-6 text-lg text-muted-foreground max-w-xl leading-relaxed">
+              Splitit scans your receipt, splits the cost any way you want, and sends your friends a
+              secure link they can settle up with — no app, no signup.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                to="/auth"
+                search={{ mode: "signup" }}
+                className="group inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-primary-foreground font-medium hover:opacity-90 transition shadow-lg shadow-primary/20"
+              >
+                Start splitting free
+                <ArrowRight className="size-4 group-hover:translate-x-0.5 transition" />
+              </Link>
+              <Link
+                to="/auth"
+                className="inline-flex items-center gap-2 rounded-xl border border-border bg-card/60 backdrop-blur px-6 py-3 font-medium hover:bg-card transition"
+              >
+                Sign in
+              </Link>
+            </div>
+            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
+              {["No card required", "Guests pay without signup", "Cancel any time"].map((t) => (
+                <span key={t} className="inline-flex items-center gap-1.5">
+                  <Check className="size-4 text-accent" /> {t}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Floating preview card */}
+          <div className="mt-16 lg:mt-24 grid md:grid-cols-3 gap-4 max-w-4xl">
+            <StatChip label="Average split">
+              <span className="text-foreground">$24.</span>
+              <span className="text-muted-foreground">17</span>
+            </StatChip>
+            <StatChip label="Settled this week">
+              <span className="text-accent">+$1,284</span>
+            </StatChip>
+            <StatChip label="Receipts scanned">
+              <span>3,412</span>
+            </StatChip>
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="mx-auto max-w-7xl px-6 py-24">
+        <div className="max-w-2xl mb-12">
+          <div className="text-xs uppercase tracking-wider text-primary font-medium mb-3">
+            How it works
+          </div>
+          <h2 className="font-display text-3xl md:text-4xl font-semibold tracking-tight">
+            Built for messy real-life money.
+          </h2>
+        </div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {FEATURES.map((f) => (
+            <FeatureCard key={f.title} {...f} />
+          ))}
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="mx-auto max-w-7xl px-6 pb-24">
+        <div className="glass-card rounded-3xl p-10 md:p-16 text-center relative overflow-hidden">
+          <div
+            className="absolute inset-0 opacity-60"
+            style={{ background: "var(--gradient-hero)" }}
+          />
+          <div className="relative">
+            <h2 className="font-display text-3xl md:text-5xl font-semibold tracking-tight mb-4">
+              Ready to stop chasing IOUs?
+            </h2>
+            <p className="text-muted-foreground max-w-lg mx-auto mb-8">
+              Create your first group in 30 seconds. Your friends don't need an account to pay you
+              back.
+            </p>
+            <Link
+              to="/auth"
+              search={{ mode: "signup" }}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-primary-foreground font-medium hover:opacity-90 transition"
+            >
+              Get started — it's free
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <footer className="border-t border-border/60 mx-auto max-w-7xl px-6 py-8 text-sm text-muted-foreground flex flex-wrap justify-between gap-4">
+        <span>© {new Date().getFullYear()} Splitit</span>
+        <span>Made for friends who hate awkward Venmo asks.</span>
+      </footer>
     </div>
   );
 }
