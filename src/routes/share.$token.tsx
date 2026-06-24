@@ -7,6 +7,7 @@ import { Check, Loader2, Receipt, Shield } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/share/$token")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Settle up · Splitit" },
