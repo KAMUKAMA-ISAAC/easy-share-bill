@@ -26,7 +26,7 @@ function NewGroup() {
 
   const createFn = useServerFn(createGroup);
   const mutation = useMutation({
-    mutationFn: (input: Parameters<typeof createGroup>[0]["data"]) => createFn({ data: input }),
+    mutationFn: (input: any) => createFn({ data: input }),
     onSuccess: (res) => {
       toast.success("Group created");
       navigate({ to: "/groups/$id", params: { id: res.id } });
