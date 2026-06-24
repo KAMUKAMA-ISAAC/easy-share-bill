@@ -132,6 +132,18 @@ export function computeSplit(input: SplitInput): SplitResult {
   }
 
   // itemized
+  if (!input.items.length) {
+    return { perMember: {}, valid: false, error: "Add at least one item" };
+  }
+  for (const it of input.items) {
+    if (it.price < 0) {
+      return { perMember: {}, valid: false, error: `"${it.name || "Item"}" has a negative price` };
+    }
+    if ((it.quantity ?? 1) <= 0) {
+      return { perMember: {}, valid: false, error: `"${it.name || "Item"}" needs a quantity > 0` };
+    }
+  }
+
   const amountsCents: Record<string, number> = {};
   for (const id of memberIds) amountsCents[id] = 0;
 
@@ -157,12 +169,16 @@ export function computeSplit(input: SplitInput): SplitResult {
     for (const id of memberIds) amountsCents[id] += fixed[id];
   }
 
-  // Final pass: reconcile to target total
+  // Strict validation: items + extras MUST equal expense total — no silent absorb.
   const grand = itemsTotalCents + extraCents;
   if (grand !== totalCents) {
-    // scale or just absorb difference into last member
-    const diff = totalCents - grand;
-    if (memberIds.length) amountsCents[memberIds[memberIds.length - 1]] += diff;
+    const diff = fromCents(grand - totalCents);
+    const sign = diff > 0 ? "over" : "under";
+    return {
+      perMember: {},
+      valid: false,
+      error: `Items total ${fromCents(grand).toFixed(2)} is ${sign} expense by ${Math.abs(diff).toFixed(2)}`,
+    };
   }
 
   const perMember: Record<string, number> = {};
