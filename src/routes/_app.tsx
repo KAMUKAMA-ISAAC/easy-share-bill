@@ -6,6 +6,7 @@ import { LayoutDashboard, Users, Receipt, Plus, LogOut, Loader2 } from "lucide-r
 import { initialsOf } from "@/lib/format";
 
 export const Route = createFileRoute("/_app")({
+  ssr: false,
   component: AppShell,
 });
 
