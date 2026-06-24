@@ -28,7 +28,7 @@ const MODES: { id: SplitMode; label: string; icon: typeof Equal }[] = [
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export function SplitEditor({ members, total, currency, value, onChange, onResultChange }: Props) {
+export function SplitEditor({ members, total, currency, value, onChange, onResultChange, payerId }: Props) {
   // Recompute on every render — cheap and ensures the view always matches inputs.
   const result = useMemo(() => {
     if (value.mode === "equal") return computeSplit({ mode: "equal", total, members });
