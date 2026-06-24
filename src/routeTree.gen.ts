@@ -12,11 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppGroupsIndexRouteImport } from './routes/_app.groups.index'
 import { Route as AppGroupsNewRouteImport } from './routes/_app.groups.new'
 import { Route as AppGroupsIdRouteImport } from './routes/_app.groups.$id'
 import { Route as AppExpensesNewRouteImport } from './routes/_app.expenses.new'
+import { Route as AppExpensesIdRouteImport } from './routes/_app.expenses.$id'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -30,6 +32,11 @@ const AppRoute = AppRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShareTokenRoute = ShareTokenRouteImport.update({
+  id: '/share/$token',
+  path: '/share/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
@@ -57,11 +64,18 @@ const AppExpensesNewRoute = AppExpensesNewRouteImport.update({
   path: '/expenses/new',
   getParentRoute: () => AppRoute,
 } as any)
+const AppExpensesIdRoute = AppExpensesIdRouteImport.update({
+  id: '/expenses/$id',
+  path: '/expenses/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AppDashboardRoute
+  '/share/$token': typeof ShareTokenRoute
+  '/expenses/$id': typeof AppExpensesIdRoute
   '/expenses/new': typeof AppExpensesNewRoute
   '/groups/$id': typeof AppGroupsIdRoute
   '/groups/new': typeof AppGroupsNewRoute
@@ -71,6 +85,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AppDashboardRoute
+  '/share/$token': typeof ShareTokenRoute
+  '/expenses/$id': typeof AppExpensesIdRoute
   '/expenses/new': typeof AppExpensesNewRoute
   '/groups/$id': typeof AppGroupsIdRoute
   '/groups/new': typeof AppGroupsNewRoute
@@ -82,6 +98,8 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/share/$token': typeof ShareTokenRoute
+  '/_app/expenses/$id': typeof AppExpensesIdRoute
   '/_app/expenses/new': typeof AppExpensesNewRoute
   '/_app/groups/$id': typeof AppGroupsIdRoute
   '/_app/groups/new': typeof AppGroupsNewRoute
@@ -93,6 +111,8 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/dashboard'
+    | '/share/$token'
+    | '/expenses/$id'
     | '/expenses/new'
     | '/groups/$id'
     | '/groups/new'
@@ -102,6 +122,8 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/dashboard'
+    | '/share/$token'
+    | '/expenses/$id'
     | '/expenses/new'
     | '/groups/$id'
     | '/groups/new'
@@ -112,6 +134,8 @@ export interface FileRouteTypes {
     | '/_app'
     | '/auth'
     | '/_app/dashboard'
+    | '/share/$token'
+    | '/_app/expenses/$id'
     | '/_app/expenses/new'
     | '/_app/groups/$id'
     | '/_app/groups/new'
@@ -122,6 +146,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ShareTokenRoute: typeof ShareTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -145,6 +170,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/share/$token': {
+      id: '/share/$token'
+      path: '/share/$token'
+      fullPath: '/share/$token'
+      preLoaderRoute: typeof ShareTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/dashboard': {
@@ -182,11 +214,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppExpensesNewRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/expenses/$id': {
+      id: '/_app/expenses/$id'
+      path: '/expenses/$id'
+      fullPath: '/expenses/$id'
+      preLoaderRoute: typeof AppExpensesIdRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
+  AppExpensesIdRoute: typeof AppExpensesIdRoute
   AppExpensesNewRoute: typeof AppExpensesNewRoute
   AppGroupsIdRoute: typeof AppGroupsIdRoute
   AppGroupsNewRoute: typeof AppGroupsNewRoute
@@ -195,6 +235,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
+  AppExpensesIdRoute: AppExpensesIdRoute,
   AppExpensesNewRoute: AppExpensesNewRoute,
   AppGroupsIdRoute: AppGroupsIdRoute,
   AppGroupsNewRoute: AppGroupsNewRoute,
@@ -207,6 +248,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRoute,
+  ShareTokenRoute: ShareTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
