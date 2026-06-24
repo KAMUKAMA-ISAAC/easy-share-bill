@@ -337,8 +337,11 @@ function NewExpense() {
         </Link>
         <button
           onClick={() => submitMutation.mutate()}
-          disabled={submitMutation.isPending || !groupId || amount <= 0}
-          className="inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-6 py-2.5 font-medium hover:opacity-90 transition disabled:opacity-50"
+          disabled={
+            submitMutation.isPending || !groupId || amount <= 0 || !splitValid || members.length === 0
+          }
+          title={!splitValid ? splitError : undefined}
+          className="inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-6 py-2.5 font-medium hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {submitMutation.isPending && <Loader2 className="size-4 animate-spin" />}
           Save expense
