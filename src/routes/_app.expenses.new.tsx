@@ -317,6 +317,7 @@ function NewExpense() {
             members={members}
             total={amount}
             currency={currency}
+            payerId={payerMemberId}
             value={splitState}
             onChange={setSplitState}
             onResultChange={(p, valid, err) => {

@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef } from "react";
 import { computeSplit, type MemberInput, type SplitMode, type ItemInput } from "@/lib/split-engine";
 import { formatMoney, initialsOf } from "@/lib/format";
-import { AlertTriangle, Check, DollarSign, Equal, ListChecks, Percent } from "lucide-react";
+import { AlertTriangle, ArrowRight, Check, DollarSign, Equal, ListChecks, Percent, Scale } from "lucide-react";
 
 interface Props {
   members: MemberInput[];
   total: number;
   currency: string;
   items?: ItemInput[];
+  payerId?: string | null;
   value: {
     mode: SplitMode;
     percentages: Record<string, number>;
@@ -27,7 +28,7 @@ const MODES: { id: SplitMode; label: string; icon: typeof Equal }[] = [
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export function SplitEditor({ members, total, currency, value, onChange, onResultChange }: Props) {
+export function SplitEditor({ members, total, currency, value, onChange, onResultChange, payerId }: Props) {
   // Recompute on every render — cheap and ensures the view always matches inputs.
   const result = useMemo(() => {
     if (value.mode === "equal") return computeSplit({ mode: "equal", total, members });
@@ -324,6 +325,95 @@ export function SplitEditor({ members, total, currency, value, onChange, onResul
         <div className="rounded-xl bg-accent/10 border border-accent/30 text-accent text-sm px-4 py-2 flex items-center gap-2">
           <Check className="size-4" /> Splits balance to {formatMoney(total, currency)}
         </div>
+      )}
+
+      {result.valid && (
+        <SettlementPreview
+          members={members}
+          perMember={result.perMember}
+          payerId={payerId ?? null}
+          currency={currency}
+        />
+      )}
+    </div>
+  );
+}
+
+function SettlementPreview({
+  members,
+  perMember,
+  payerId,
+  currency,
+}: {
+  members: MemberInput[];
+  perMember: Record<string, number>;
+  payerId: string | null;
+  currency: string;
+}) {
+  const payer = members.find((m) => m.id === payerId) ?? null;
+  // Net balance for this expense: payer covered the total, owes -total + own share;
+  // each other member owes +their share.
+  const transfers = useMemo(() => {
+    if (!payer) return [];
+    return members
+      .filter((m) => m.id !== payer.id)
+      .map((m) => ({ from: m, to: payer, amount: Math.round((perMember[m.id] ?? 0) * 100) / 100 }))
+      .filter((t) => t.amount > 0.005);
+  }, [members, perMember, payer]);
+
+  const payerShare = payer ? (perMember[payer.id] ?? 0) : 0;
+  const collected = transfers.reduce((a, t) => a + t.amount, 0);
+
+  return (
+    <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
+      <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+        <Scale className="size-3.5" />
+        Settlement preview
+      </div>
+
+      {!payer ? (
+        <div className="text-sm text-muted-foreground">
+          Pick who paid to preview who owes whom.
+        </div>
+      ) : transfers.length === 0 ? (
+        <div className="text-sm text-muted-foreground">
+          {payer.name} covers their own share — nobody owes anything.
+        </div>
+      ) : (
+        <>
+          <ul className="space-y-1.5">
+            {transfers.map((t, i) => (
+              <li key={i} className="flex items-center gap-2 text-sm">
+                <span className="size-6 rounded-full bg-gradient-to-br from-primary/40 to-accent/40 grid place-items-center text-[10px] font-medium">
+                  {initialsOf(t.from.name)}
+                </span>
+                <span className="truncate">{t.from.name}</span>
+                <ArrowRight className="size-3.5 text-muted-foreground shrink-0" />
+                <span className="size-6 rounded-full bg-gradient-to-br from-accent/40 to-primary/40 grid place-items-center text-[10px] font-medium">
+                  {initialsOf(t.to.name)}
+                </span>
+                <span className="truncate">{t.to.name}</span>
+                <span className="ml-auto font-numeric text-sm">
+                  {formatMoney(t.amount, currency)}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="flex justify-between border-t border-border pt-2 text-xs text-muted-foreground">
+            <span>
+              {payer.name} collects{" "}
+              <span className="font-numeric text-foreground">
+                {formatMoney(collected, currency)}
+              </span>
+            </span>
+            <span>
+              Own share{" "}
+              <span className="font-numeric text-foreground">
+                {formatMoney(payerShare, currency)}
+              </span>
+            </span>
+          </div>
+        </>
       )}
     </div>
   );
