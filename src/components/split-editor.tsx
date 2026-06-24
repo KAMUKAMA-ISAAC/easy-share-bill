@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef } from "react";
 import { computeSplit, type MemberInput, type SplitMode, type ItemInput } from "@/lib/split-engine";
 import { formatMoney, initialsOf } from "@/lib/format";
-import { AlertTriangle, Check, DollarSign, Equal, ListChecks, Percent } from "lucide-react";
+import { AlertTriangle, ArrowRight, Check, DollarSign, Equal, ListChecks, Percent, Scale } from "lucide-react";
 
 interface Props {
   members: MemberInput[];
   total: number;
   currency: string;
   items?: ItemInput[];
+  payerId?: string | null;
   value: {
     mode: SplitMode;
     percentages: Record<string, number>;
