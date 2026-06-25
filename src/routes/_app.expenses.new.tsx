@@ -323,6 +323,26 @@ function NewExpense() {
             </select>
           </div>
         )}
+
+        {splitState.mode === "itemized" && splitState.items.length > 0 && (
+          <div>
+            <label className="text-xs uppercase tracking-wider text-muted-foreground">
+              Guest claim mode
+            </label>
+            <select
+              value={claimMode}
+              onChange={(e) => setClaimMode(e.target.value as any)}
+              className="mt-1 w-full rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary"
+            >
+              <option value="free">Open — guests pick what they're paying for (shared OK)</option>
+              <option value="first_come">First come — each item can be claimed once</option>
+              <option value="preassigned">Pre-assigned — only your splits apply</option>
+            </select>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Affects the share link only. Guests see receipt items and tick what they owe.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Split */}
