@@ -19,6 +19,7 @@ export type Database = {
           assigned_member_ids: string[]
           expense_id: string
           id: string
+          locked: boolean
           name: string
           price: number
           quantity: number
@@ -28,6 +29,7 @@ export type Database = {
           assigned_member_ids?: string[]
           expense_id: string
           id?: string
+          locked?: boolean
           name: string
           price: number
           quantity?: number
@@ -37,6 +39,7 @@ export type Database = {
           assigned_member_ids?: string[]
           expense_id?: string
           id?: string
+          locked?: boolean
           name?: string
           price?: number
           quantity?: number
@@ -56,6 +59,7 @@ export type Database = {
         Row: {
           amount: number
           category: string | null
+          claim_mode: string
           created_at: string
           currency: string
           description: string
@@ -72,6 +76,7 @@ export type Database = {
         Insert: {
           amount: number
           category?: string | null
+          claim_mode?: string
           created_at?: string
           currency?: string
           description: string
@@ -88,6 +93,7 @@ export type Database = {
         Update: {
           amount?: number
           category?: string | null
+          claim_mode?: string
           created_at?: string
           currency?: string
           description?: string
@@ -190,6 +196,70 @@ export type Database = {
         }
         Relationships: []
       }
+      item_claims: {
+        Row: {
+          amount: number
+          created_at: string
+          expense_id: string
+          guest_name: string
+          id: string
+          item_id: string
+          member_id: string | null
+          paid: boolean
+          paid_at: string | null
+          payment_method: string | null
+          quantity: number
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          expense_id: string
+          guest_name: string
+          id?: string
+          item_id: string
+          member_id?: string | null
+          paid?: boolean
+          paid_at?: string | null
+          payment_method?: string | null
+          quantity?: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          expense_id?: string
+          guest_name?: string
+          id?: string
+          item_id?: string
+          member_id?: string | null
+          paid?: boolean
+          paid_at?: string | null
+          payment_method?: string | null
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_claims_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_claims_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "expense_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_claims_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "group_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           body: string | null
@@ -264,26 +334,44 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          bank_account_name: string | null
+          bank_account_number: string | null
+          bank_name: string | null
           created_at: string
           display_name: string | null
           email: string
           id: string
+          momo_name: string | null
+          momo_number: string | null
+          momo_provider: string | null
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
           created_at?: string
           display_name?: string | null
           email: string
           id: string
+          momo_name?: string | null
+          momo_number?: string | null
+          momo_provider?: string | null
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
           created_at?: string
           display_name?: string | null
           email?: string
           id?: string
+          momo_name?: string | null
+          momo_number?: string | null
+          momo_provider?: string | null
           updated_at?: string
         }
         Relationships: []
