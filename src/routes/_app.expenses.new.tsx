@@ -137,6 +137,7 @@ function NewExpense() {
           currency,
           expense_date: date,
           split_mode: splitState.mode,
+          claim_mode: claimMode,
           paid_by_member_id: payerMemberId,
           splits,
           items:
