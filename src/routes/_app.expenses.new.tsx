@@ -29,10 +29,11 @@ function NewExpense() {
   const [groupId, setGroupId] = useState<string | null>(initialGroupId ?? null);
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState<number>(0);
-  const [currency, setCurrency] = useState("USD");
+  const [currency, setCurrency] = useState("UGX");
   const [category, setCategory] = useState("general");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [payerMemberId, setPayerMemberId] = useState<string | null>(null);
+  const [claimMode, setClaimMode] = useState<"free" | "first_come" | "preassigned">("free");
   const [receiptId, setReceiptId] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scannedItems, setScannedItems] = useState<ItemInput[] | null>(null);
