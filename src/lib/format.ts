@@ -1,19 +1,23 @@
-export function formatMoney(amount: number, currency = "USD") {
+export function formatMoney(amount: number, currency = "UGX") {
+  const code = (currency || "UGX").toUpperCase();
+  // UGX has no minor units in practice; render as whole shillings.
+  const isUGX = code === "UGX";
   try {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("en-UG", {
       style: "currency",
-      currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      currency: code,
+      minimumFractionDigits: isUGX ? 0 : 2,
+      maximumFractionDigits: isUGX ? 0 : 2,
     }).format(amount);
   } catch {
-    return `$${amount.toFixed(2)}`;
+    const rounded = isUGX ? Math.round(amount) : amount.toFixed(2);
+    return `${code} ${rounded}`;
   }
 }
 
 export function formatDate(d: string | Date) {
   const date = typeof d === "string" ? new Date(d) : d;
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat("en-GB", {
     month: "short",
     day: "numeric",
     year: "numeric",

@@ -3,54 +3,30 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
- * AI Receipt Parsing — MOCK implementation.
- *
- * Returns a plausible parsed receipt structure. In production this would
- * call Lovable AI Gateway with the uploaded image (vision model). The
- * frontend lets the user correct any field before saving.
+ * AI receipt parsing via Lovable AI Gateway (Gemini vision).
+ * The user-scoped Supabase client creates a short-lived signed URL for the
+ * uploaded receipt; the vision model reads the image directly from that URL
+ * and returns a strict JSON structure we persist on `receipts`.
  */
 
-const ParseSchema = z.object({
-  storage_path: z.string().min(1),
-});
+const ParseSchema = z.object({ storage_path: z.string().min(1) });
 
-const MOCK_RECEIPTS = [
-  {
-    merchant: "Blue Bottle Coffee",
-    items: [
-      { name: "Cappuccino", price: 5.5, quantity: 2 },
-      { name: "Almond Croissant", price: 4.75, quantity: 1 },
-      { name: "Avocado Toast", price: 12.0, quantity: 1 },
-    ],
-    subtotal: 27.75,
-    tax: 2.42,
-    total: 30.17,
-  },
-  {
-    merchant: "Whole Foods Market",
-    items: [
-      { name: "Organic Bananas", price: 3.49, quantity: 1 },
-      { name: "Greek Yogurt", price: 6.99, quantity: 2 },
-      { name: "Sourdough Bread", price: 5.5, quantity: 1 },
-      { name: "Sparkling Water 12pk", price: 8.99, quantity: 1 },
-    ],
-    subtotal: 31.96,
-    tax: 2.4,
-    total: 34.36,
-  },
-  {
-    merchant: "Sushi Time",
-    items: [
-      { name: "Dragon Roll", price: 18.0, quantity: 1 },
-      { name: "Spicy Tuna Roll", price: 14.0, quantity: 1 },
-      { name: "Miso Soup", price: 4.0, quantity: 2 },
-      { name: "Edamame", price: 6.5, quantity: 1 },
-    ],
-    subtotal: 46.5,
-    tax: 4.18,
-    total: 50.68,
-  },
-];
+const ParsedJsonSchema = z.object({
+  merchant: z.string().default("Receipt"),
+  currency: z.string().default("UGX"),
+  items: z
+    .array(
+      z.object({
+        name: z.string().min(1),
+        price: z.number().nonnegative(),
+        quantity: z.number().positive().default(1),
+      }),
+    )
+    .default([]),
+  subtotal: z.number().nonnegative().optional().nullable(),
+  tax: z.number().nonnegative().optional().nullable(),
+  total: z.number().nonnegative().default(0),
+});
 
 export const parseReceipt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -58,13 +34,81 @@ export const parseReceipt = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // Simulate AI processing latency
-    await new Promise((r) => setTimeout(r, 1200));
+    const apiKey = process.env.LOVABLE_API_KEY;
+    if (!apiKey) throw new Error("AI gateway not configured");
 
-    // Pseudo-random pick based on path hash so same file -> same result
-    let h = 0;
-    for (const ch of data.storage_path) h = (h * 31 + ch.charCodeAt(0)) | 0;
-    const parsed = MOCK_RECEIPTS[Math.abs(h) % MOCK_RECEIPTS.length];
+    // Signed URL the vision model can fetch directly
+    const { data: signed, error: signErr } = await supabase.storage
+      .from("receipts")
+      .createSignedUrl(data.storage_path, 60 * 10);
+    if (signErr || !signed?.signedUrl) {
+      throw new Error(signErr?.message ?? "Could not load receipt image");
+    }
+
+    const systemPrompt =
+      "You are a receipt OCR engine. Read the receipt photo and return ONLY a JSON object matching this schema (no prose, no markdown):\n" +
+      "{\n" +
+      '  "merchant": string,\n' +
+      '  "currency": ISO-4217 string (use "UGX" if unclear),\n' +
+      '  "items": [ { "name": string, "price": number, "quantity": number } ],\n' +
+      '  "subtotal": number,\n' +
+      '  "tax": number,\n' +
+      '  "total": number\n' +
+      "}\n" +
+      "Rules:\n" +
+      "- Extract EVERY line item exactly as printed, including modifiers.\n" +
+      '- "price" is the UNIT price (per single item), not the line total.\n' +
+      "- If quantity isn't printed, use 1.\n" +
+      "- Numbers must be plain numbers, no currency symbols or thousands separators.\n" +
+      "- If a value is missing on the receipt, use 0.";
+
+    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "Extract this receipt." },
+              { type: "image_url", image_url: { url: signed.signedUrl } },
+            ],
+          },
+        ],
+        response_format: { type: "json_object" },
+      }),
+    });
+
+    if (!aiRes.ok) {
+      const body = await aiRes.text();
+      if (aiRes.status === 429) throw new Error("AI is busy — please try again in a moment");
+      if (aiRes.status === 402) throw new Error("AI credits exhausted — add credits in workspace billing");
+      throw new Error(`AI gateway error (${aiRes.status}): ${body.slice(0, 200)}`);
+    }
+
+    const json = (await aiRes.json()) as {
+      choices?: { message?: { content?: string } }[];
+    };
+    const raw = json.choices?.[0]?.message?.content ?? "";
+    let parsed: z.infer<typeof ParsedJsonSchema>;
+    try {
+      // Strip any fenced wrapping just in case
+      const cleaned = raw.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+      parsed = ParsedJsonSchema.parse(JSON.parse(cleaned));
+    } catch (e) {
+      throw new Error("Could not understand the receipt — try a clearer photo");
+    }
+
+    // Reconcile total if missing
+    if (!parsed.total || parsed.total === 0) {
+      const sum = parsed.items.reduce((a, it) => a + it.price * (it.quantity ?? 1), 0);
+      parsed.total = Math.round((sum + (parsed.tax ?? 0)) * 100) / 100;
+    }
 
     const { data: receipt, error } = await supabase
       .from("receipts")
@@ -72,8 +116,8 @@ export const parseReceipt = createServerFn({ method: "POST" })
         user_id: userId,
         storage_path: data.storage_path,
         merchant: parsed.merchant,
-        subtotal: parsed.subtotal,
-        tax: parsed.tax,
+        subtotal: parsed.subtotal ?? null,
+        tax: parsed.tax ?? null,
         total: parsed.total,
         parsed_data: parsed as any,
       })

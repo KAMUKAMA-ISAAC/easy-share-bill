@@ -1,9 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getSharedExpense, guestMarkSplitPaid } from "@/lib/shared-links.functions";
+import { useMemo, useState } from "react";
+import {
+  getSharedExpense,
+  guestMarkSplitPaid,
+  guestClaimItems,
+  guestPayClaims,
+} from "@/lib/shared-links.functions";
 import { formatDate, formatMoney, initialsOf } from "@/lib/format";
-import { Check, Loader2, Receipt, Shield } from "lucide-react";
+import {
+  Check,
+  Loader2,
+  Receipt,
+  Shield,
+  Smartphone,
+  Landmark,
+  CheckCircle2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/share/$token")({
@@ -61,7 +75,6 @@ function GuestShare() {
   const data = q.data!;
   return (
     <div className="min-h-screen">
-      {/* Mini header */}
       <header className="border-b border-border/60 backdrop-blur-xl bg-background/70">
         <div className="mx-auto max-w-2xl px-4 sm:px-6 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
@@ -78,7 +91,7 @@ function GuestShare() {
 
       <main className="mx-auto max-w-2xl px-4 sm:px-6 py-8">
         {data.type === "expense" ? (
-          <ExpenseView data={data} onMark={(id) => mark.mutate(id)} pending={mark.isPending} />
+          <ExpenseView data={data} token={token} onMark={(id) => mark.mutate(id)} pending={mark.isPending} />
         ) : (
           <GroupView data={data} />
         )}
@@ -100,21 +113,42 @@ function GuestShare() {
   );
 }
 
+type ExpenseData = Extract<Awaited<ReturnType<typeof getSharedExpense>>, { type: "expense" }>;
+
 function ExpenseView({
   data,
+  token,
   onMark,
   pending,
 }: {
-  data: Extract<Awaited<ReturnType<typeof getSharedExpense>>, { type: "expense" }>;
+  data: ExpenseData;
+  token: string;
   onMark: (id: string) => void;
   pending: boolean;
 }) {
-  const { expense, splits, members, items, payer_name } = data;
+  const { expense, splits, members, items, claims, payer_name, payer_payment } = data;
   const memberById: Record<string, any> = {};
   members.forEach((m: any) => (memberById[m.id] = m));
 
-  const paidSum = splits.filter((s) => s.paid).reduce((a, s) => a + Number(s.amount), 0);
-  const progress = (paidSum / Number(expense.amount)) * 100;
+  const claimsByItem = useMemo(() => {
+    const map: Record<string, typeof claims> = {};
+    for (const c of claims) {
+      (map[c.item_id] ||= []).push(c);
+    }
+    return map;
+  }, [claims]);
+
+  const totalClaimed = claims.reduce((a, c) => a + Number(c.amount), 0);
+  const totalPaidViaClaims = claims
+    .filter((c) => c.paid)
+    .reduce((a, c) => a + Number(c.amount), 0);
+  const paidSplitSum = splits.filter((s) => s.paid).reduce((a, s) => a + Number(s.amount), 0);
+  const totalPaid = paidSplitSum + totalPaidViaClaims;
+  const progress = (totalPaid / Number(expense.amount)) * 100;
+
+  const hasItems = items.length > 0;
+  const claimMode = (expense as any).claim_mode ?? "free";
+  const showItemClaiming = hasItems && claimMode !== "preassigned";
 
   return (
     <>
@@ -135,7 +169,7 @@ function ExpenseView({
         <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
           <span>Settled</span>
           <span>
-            {formatMoney(paidSum, expense.currency)} /{" "}
+            {formatMoney(totalPaid, expense.currency)} /{" "}
             {formatMoney(Number(expense.amount), expense.currency)}
           </span>
         </div>
@@ -147,66 +181,430 @@ function ExpenseView({
         </div>
       </div>
 
-      {items.length > 0 && (
-        <div className="glass-card rounded-2xl p-5 mb-5">
-          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <Receipt className="size-4" /> Items
-          </h2>
-          <div className="space-y-1.5 text-sm">
-            {items.map((it, i) => (
-              <div key={i} className="flex justify-between text-muted-foreground">
-                <span>
-                  {it.name} {it.quantity > 1 && <span className="text-xs">×{it.quantity}</span>}
-                </span>
-                <span className="font-numeric">
-                  {formatMoney(Number(it.price) * (it.quantity ?? 1), expense.currency)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="glass-card rounded-2xl overflow-hidden">
-        <div className="p-5 border-b border-border">
-          <h2 className="font-semibold text-sm">Who owes what</h2>
-        </div>
-        <div className="divide-y divide-border">
-          {splits.map((s) => {
-            const member = memberById[s.member_id];
-            const isPayer = s.member_id === expense.paid_by_member_id;
-            return (
-              <div key={s.id} className="flex items-center gap-3 p-4">
-                <div className="size-9 rounded-full bg-gradient-to-br from-primary/40 to-accent/40 grid place-items-center text-xs font-medium">
-                  {initialsOf(member?.display_name ?? "?")}
-                </div>
-                <div className="flex-1">
-                  <div className="text-sm font-medium">{member?.display_name ?? "Member"}</div>
-                  {isPayer && <div className="text-xs text-muted-foreground">paid the bill</div>}
-                </div>
-                <div className="font-numeric text-sm font-semibold">
-                  {formatMoney(Number(s.amount), expense.currency)}
-                </div>
-                {!isPayer &&
-                  (s.paid ? (
-                    <span className="text-xs inline-flex items-center gap-1 text-accent bg-accent/10 px-2 py-1 rounded-md">
-                      <Check className="size-3" /> Paid
+      {showItemClaiming ? (
+        <ItemClaimSection
+          token={token}
+          expense={expense}
+          items={items}
+          claimsByItem={claimsByItem}
+          payerPayment={payer_payment}
+          claimMode={claimMode}
+        />
+      ) : (
+        <>
+          {hasItems && (
+            <div className="glass-card rounded-2xl p-5 mb-5">
+              <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <Receipt className="size-4" /> Items
+              </h2>
+              <div className="space-y-1.5 text-sm">
+                {items.map((it: any) => (
+                  <div key={it.id} className="flex justify-between text-muted-foreground">
+                    <span>
+                      {it.name}{" "}
+                      {it.quantity > 1 && <span className="text-xs">×{it.quantity}</span>}
                     </span>
-                  ) : (
-                    <button
-                      onClick={() => onMark(s.id)}
-                      disabled={pending}
-                      className="text-xs rounded-md bg-primary text-primary-foreground px-3 py-1.5 hover:opacity-90 transition disabled:opacity-50"
-                    >
-                      Mark paid
-                    </button>
-                  ))}
+                    <span className="font-numeric">
+                      {formatMoney(Number(it.price) * (it.quantity ?? 1), expense.currency)}
+                    </span>
+                  </div>
+                ))}
               </div>
+            </div>
+          )}
+
+          <div className="glass-card rounded-2xl overflow-hidden">
+            <div className="p-5 border-b border-border">
+              <h2 className="font-semibold text-sm">Who owes what</h2>
+            </div>
+            <div className="divide-y divide-border">
+              {splits.map((s) => {
+                const member = memberById[s.member_id];
+                const isPayer = s.member_id === expense.paid_by_member_id;
+                return (
+                  <div key={s.id} className="flex items-center gap-3 p-4">
+                    <div className="size-9 rounded-full bg-gradient-to-br from-primary/40 to-accent/40 grid place-items-center text-xs font-medium">
+                      {initialsOf(member?.display_name ?? "?")}
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">{member?.display_name ?? "Member"}</div>
+                      {isPayer && <div className="text-xs text-muted-foreground">paid the bill</div>}
+                    </div>
+                    <div className="font-numeric text-sm font-semibold">
+                      {formatMoney(Number(s.amount), expense.currency)}
+                    </div>
+                    {!isPayer &&
+                      (s.paid ? (
+                        <span className="text-xs inline-flex items-center gap-1 text-accent bg-accent/10 px-2 py-1 rounded-md">
+                          <Check className="size-3" /> Paid
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => onMark(s.id)}
+                          disabled={pending}
+                          className="text-xs rounded-md bg-primary text-primary-foreground px-3 py-1.5 hover:opacity-90 transition disabled:opacity-50"
+                        >
+                          Mark paid
+                        </button>
+                      ))}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+function ItemClaimSection({
+  token,
+  expense,
+  items,
+  claimsByItem,
+  payerPayment,
+  claimMode,
+}: {
+  token: string;
+  expense: ExpenseData["expense"];
+  items: ExpenseData["items"];
+  claimsByItem: Record<string, ExpenseData["claims"]>;
+  payerPayment: ExpenseData["payer_payment"];
+  claimMode: string;
+}) {
+  const qc = useQueryClient();
+  const claimFn = useServerFn(guestClaimItems);
+  const payFn = useServerFn(guestPayClaims);
+
+  const [guestName, setGuestName] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [step, setStep] = useState<"pick" | "pay" | "done">("pick");
+  const [createdClaimIds, setCreatedClaimIds] = useState<string[]>([]);
+  const [method, setMethod] = useState<"mtn_momo" | "airtel_money" | "bank_transfer">("mtn_momo");
+  const [reference, setReference] = useState("");
+
+  const selectedTotal = useMemo(() => {
+    let sum = 0;
+    for (const it of items as any[]) {
+      if (selected.has(it.id)) sum += Number(it.price) * (it.quantity ?? 1);
+    }
+    return sum;
+  }, [selected, items]);
+
+  const toggle = (id: string) =>
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const claim = useMutation({
+    mutationFn: () =>
+      claimFn({
+        data: {
+          token,
+          item_ids: Array.from(selected),
+          guest_name: guestName.trim(),
+        },
+      }),
+    onSuccess: (res) => {
+      setCreatedClaimIds(res.claim_ids);
+      setStep("pay");
+      toast.success(`Claimed ${formatMoney(res.total, expense.currency)} — choose payment`);
+      qc.invalidateQueries({ queryKey: ["share", token] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Could not claim"),
+  });
+
+  const pay = useMutation({
+    mutationFn: () =>
+      payFn({
+        data: { token, claim_ids: createdClaimIds, method, reference: reference || undefined },
+      }),
+    onSuccess: (res) => {
+      setStep("done");
+      toast.success(`Paid ${formatMoney(res.total, expense.currency)} via mock checkout`);
+      qc.invalidateQueries({ queryKey: ["share", token] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Payment failed"),
+  });
+
+  if (step === "done") {
+    return (
+      <div className="glass-card rounded-2xl p-8 text-center">
+        <CheckCircle2 className="size-12 mx-auto text-accent mb-3" />
+        <h2 className="font-display text-xl font-semibold">You're settled up</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          {expense.paid_by_member_id ? `${payerPayment?.display_name ?? "The organiser"} has been notified.` : "Recorded."}
+        </p>
+        <button
+          onClick={() => {
+            setStep("pick");
+            setSelected(new Set());
+            setCreatedClaimIds([]);
+          }}
+          className="mt-6 text-sm text-primary hover:underline"
+        >
+          Claim more items
+        </button>
+      </div>
+    );
+  }
+
+  if (step === "pay") {
+    return (
+      <PayPanel
+        amount={selectedTotal}
+        currency={expense.currency}
+        payerPayment={payerPayment}
+        method={method}
+        setMethod={setMethod}
+        reference={reference}
+        setReference={setReference}
+        onPay={() => pay.mutate()}
+        pending={pay.isPending}
+      />
+    );
+  }
+
+  return (
+    <div className="glass-card rounded-2xl overflow-hidden mb-5">
+      <div className="p-5 border-b border-border">
+        <h2 className="font-semibold text-sm flex items-center gap-2">
+          <Receipt className="size-4" /> Pick the items you're paying for
+        </h2>
+        <p className="text-xs text-muted-foreground mt-1">
+          {claimMode === "first_come"
+            ? "First-come, first-served — locked items have been claimed."
+            : "Multiple people can claim the same item — split however you like."}
+        </p>
+      </div>
+
+      <div className="divide-y divide-border">
+        {(items as any[]).map((it) => {
+          const itemClaims = claimsByItem[it.id] ?? [];
+          const isLocked = claimMode === "first_come" && (it.locked || itemClaims.length > 0);
+          const isSelected = selected.has(it.id);
+          const lineTotal = Number(it.price) * (it.quantity ?? 1);
+          return (
+            <button
+              key={it.id}
+              type="button"
+              disabled={isLocked}
+              onClick={() => toggle(it.id)}
+              className={`w-full text-left flex items-center gap-3 p-4 transition ${
+                isLocked
+                  ? "opacity-50 cursor-not-allowed"
+                  : isSelected
+                    ? "bg-primary/10"
+                    : "hover:bg-muted/50"
+              }`}
+            >
+              <div
+                className={`size-5 rounded-md border-2 grid place-items-center transition ${
+                  isSelected ? "bg-primary border-primary" : "border-border"
+                }`}
+              >
+                {isSelected && <Check className="size-3.5 text-primary-foreground" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium truncate">
+                  {it.name}
+                  {it.quantity > 1 && (
+                    <span className="ml-1.5 text-xs text-muted-foreground">×{it.quantity}</span>
+                  )}
+                </div>
+                {itemClaims.length > 0 && (
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Claimed by {itemClaims.map((c) => c.guest_name).join(", ")}
+                  </div>
+                )}
+              </div>
+              <div className="font-numeric text-sm font-semibold">
+                {formatMoney(lineTotal, expense.currency)}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="p-5 border-t border-border space-y-3">
+        <div>
+          <label className="text-xs uppercase tracking-wider text-muted-foreground">
+            Your name
+          </label>
+          <input
+            value={guestName}
+            onChange={(e) => setGuestName(e.target.value)}
+            placeholder="So everyone knows who paid"
+            className="mt-1 w-full rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary"
+          />
+        </div>
+
+        <div className="flex items-center justify-between pt-2">
+          <div>
+            <div className="text-xs text-muted-foreground">Your total</div>
+            <div className="font-numeric text-2xl font-semibold">
+              {formatMoney(selectedTotal, expense.currency)}
+            </div>
+          </div>
+          <button
+            onClick={() => claim.mutate()}
+            disabled={claim.isPending || selected.size === 0 || !guestName.trim()}
+            className="inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-5 py-2.5 font-medium hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {claim.isPending && <Loader2 className="size-4 animate-spin" />}
+            Continue to pay
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PayPanel({
+  amount,
+  currency,
+  payerPayment,
+  method,
+  setMethod,
+  reference,
+  setReference,
+  onPay,
+  pending,
+}: {
+  amount: number;
+  currency: string;
+  payerPayment: ExpenseData["payer_payment"];
+  method: "mtn_momo" | "airtel_money" | "bank_transfer";
+  setMethod: (m: "mtn_momo" | "airtel_money" | "bank_transfer") => void;
+  reference: string;
+  setReference: (s: string) => void;
+  onPay: () => void;
+  pending: boolean;
+}) {
+  const options = [
+    {
+      id: "mtn_momo" as const,
+      label: "MTN Mobile Money",
+      icon: Smartphone,
+      hint: payerPayment?.momo_provider === "mtn_momo" ? payerPayment.momo_number : null,
+    },
+    {
+      id: "airtel_money" as const,
+      label: "Airtel Money",
+      icon: Smartphone,
+      hint: payerPayment?.momo_provider === "airtel_money" ? payerPayment.momo_number : null,
+    },
+    {
+      id: "bank_transfer" as const,
+      label: "Bank transfer",
+      icon: Landmark,
+      hint: payerPayment?.bank_account_number ?? null,
+    },
+  ];
+
+  const recipient =
+    method === "bank_transfer"
+      ? {
+          line1: payerPayment?.bank_name || "Bank not set",
+          line2: payerPayment?.bank_account_number
+            ? `${payerPayment.bank_account_number} · ${payerPayment.bank_account_name ?? ""}`
+            : "Account not provided",
+        }
+      : {
+          line1:
+            payerPayment?.momo_provider === method
+              ? payerPayment.momo_name ?? "Recipient"
+              : "Not configured for this method",
+          line2:
+            payerPayment?.momo_provider === method
+              ? payerPayment.momo_number ?? ""
+              : "Ask the organiser to set their details",
+        };
+
+  return (
+    <div className="glass-card rounded-2xl p-5 mb-5 space-y-5">
+      <div>
+        <div className="text-xs uppercase tracking-wider text-muted-foreground">
+          You're paying
+        </div>
+        <div className="font-numeric text-4xl font-semibold mt-1 gradient-text">
+          {formatMoney(amount, currency)}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
+          Payment method
+        </div>
+        <div className="grid gap-2">
+          {options.map((opt) => {
+            const active = method === opt.id;
+            const Icon = opt.icon;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setMethod(opt.id)}
+                className={`flex items-center gap-3 p-3 rounded-xl border text-left transition ${
+                  active
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-primary/40"
+                }`}
+              >
+                <Icon className="size-5 text-primary" />
+                <div className="flex-1">
+                  <div className="text-sm font-medium">{opt.label}</div>
+                  {opt.hint && (
+                    <div className="text-xs text-muted-foreground font-numeric">{opt.hint}</div>
+                  )}
+                </div>
+                <div
+                  className={`size-4 rounded-full border-2 ${
+                    active ? "border-primary bg-primary" : "border-border"
+                  }`}
+                />
+              </button>
             );
           })}
         </div>
       </div>
-    </>
+
+      <div className="rounded-xl bg-muted/30 border border-border p-4 text-sm">
+        <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+          Send to
+        </div>
+        <div className="font-medium">{recipient.line1}</div>
+        <div className="font-numeric text-muted-foreground">{recipient.line2}</div>
+      </div>
+
+      <div>
+        <label className="text-xs uppercase tracking-wider text-muted-foreground">
+          Transaction reference (optional)
+        </label>
+        <input
+          value={reference}
+          onChange={(e) => setReference(e.target.value)}
+          placeholder="e.g. MoMo confirmation code"
+          className="mt-1 w-full rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary font-numeric"
+        />
+      </div>
+
+      <button
+        onClick={onPay}
+        disabled={pending}
+        className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-5 py-3 font-medium hover:opacity-90 transition disabled:opacity-50"
+      >
+        {pending && <Loader2 className="size-4 animate-spin" />}
+        {pending ? "Processing…" : `Pay ${formatMoney(amount, currency)}`}
+      </button>
+      <p className="text-xs text-muted-foreground text-center">
+        Mock checkout — no real money moves. Recorded as paid for everyone to see.
+      </p>
+    </div>
   );
 }
 
