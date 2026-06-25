@@ -262,24 +262,38 @@ function NewExpense() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-[1fr_auto] gap-3">
           <div>
             <label className="text-xs uppercase tracking-wider text-muted-foreground">
               Amount
             </label>
-            <div className="relative mt-1">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                $
-              </span>
-              <input
-                type="number"
-                step="0.01"
-                value={amount || ""}
-                onChange={(e) => setAmount(Number(e.target.value))}
-                className="w-full rounded-xl bg-input border border-border pl-8 pr-3 py-2.5 outline-none focus:border-primary font-numeric"
-              />
-            </div>
+            <input
+              type="number"
+              step="any"
+              value={amount || ""}
+              onChange={(e) => setAmount(Number(e.target.value))}
+              className="mt-1 w-full rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary font-numeric"
+            />
           </div>
+          <div>
+            <label className="text-xs uppercase tracking-wider text-muted-foreground">
+              Currency
+            </label>
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              className="mt-1 rounded-xl bg-input border border-border px-3 py-2.5 outline-none focus:border-primary"
+            >
+              <option value="UGX">UGX</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+              <option value="KES">KES</option>
+              <option value="TZS">TZS</option>
+            </select>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-4">
           <div>
             <label className="text-xs uppercase tracking-wider text-muted-foreground">Date</label>
             <input
