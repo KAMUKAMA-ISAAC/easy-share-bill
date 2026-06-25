@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate, Link, useRouterState } from "@tan
 import { useEffect } from "react";
 import { useAuth } from "@/lib/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Users, Receipt, Plus, LogOut, Loader2 } from "lucide-react";
+import { LayoutDashboard, Users, Receipt, Plus, LogOut, Loader2, Settings } from "lucide-react";
 import { initialsOf } from "@/lib/format";
 
 export const Route = createFileRoute("/_app")({
@@ -75,6 +75,13 @@ function AppShell() {
           </nav>
 
           <div className="flex items-center gap-2">
+            <Link
+              to="/settings"
+              className="size-9 grid place-items-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition"
+              title="Payment settings"
+            >
+              <Settings className="size-4" />
+            </Link>
             <div className="size-9 rounded-full bg-gradient-to-br from-primary/40 to-accent/40 grid place-items-center text-sm font-medium">
               {initialsOf(name)}
             </div>
