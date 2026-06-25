@@ -139,7 +139,7 @@
   }
 
   ::selection {
-    background: oklch(0.66 0.22 290 / 0.35);
+    background: oklch(0.55 0.2 255 / 0.25);
   }
 }
 
