@@ -18,6 +18,19 @@ function AppShell() {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [user, loading, navigate]);
 
+  // Apply saved theme preference on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("splitit:prefs");
+      const theme = raw ? (JSON.parse(raw).theme as string) : "system";
+      const dark =
+        theme === "dark" ||
+        (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.classList.toggle("dark", dark);
+    } catch {}
+  }, []);
+
+
   if (loading || !user) {
     return (
       <div className="min-h-screen grid place-items-center">
@@ -78,10 +91,11 @@ function AppShell() {
             <Link
               to="/settings"
               className="size-9 grid place-items-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition"
-              title="Payment settings"
+              title="Settings"
             >
               <Settings className="size-4" />
             </Link>
+
             <Link
               to="/profile"
               className="size-9 rounded-full bg-gradient-to-br from-primary/40 to-accent/40 grid place-items-center text-sm font-medium hover:opacity-90 transition"

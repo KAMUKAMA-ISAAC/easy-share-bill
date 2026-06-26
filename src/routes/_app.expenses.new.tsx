@@ -262,27 +262,24 @@ function NewExpense() {
           />
         </div>
 
-        <div className="grid grid-cols-[1fr_auto] gap-3">
-          <div>
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">
-              Amount
-            </label>
+        <div>
+          <label className="text-xs uppercase tracking-wider text-muted-foreground">
+            Amount
+          </label>
+          <div className="mt-1 flex items-stretch rounded-xl bg-input border border-border overflow-hidden focus-within:border-primary">
             <input
               type="number"
               step="any"
               value={amount || ""}
               onChange={(e) => setAmount(Number(e.target.value))}
-              className="mt-1 w-full rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary font-numeric"
+              placeholder="0"
+              className="flex-1 min-w-0 bg-transparent px-4 py-2.5 outline-none font-numeric"
             />
-          </div>
-          <div>
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">
-              Currency
-            </label>
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              className="mt-1 rounded-xl bg-input border border-border px-3 py-2.5 outline-none focus:border-primary"
+              className="bg-muted/40 border-l border-border px-3 py-2.5 outline-none text-sm font-medium"
+              aria-label="Currency"
             >
               <option value="UGX">UGX</option>
               <option value="USD">USD</option>
@@ -293,6 +290,7 @@ function NewExpense() {
             </select>
           </div>
         </div>
+
         <div className="grid grid-cols-1 gap-4">
           <div>
             <label className="text-xs uppercase tracking-wider text-muted-foreground">Date</label>
