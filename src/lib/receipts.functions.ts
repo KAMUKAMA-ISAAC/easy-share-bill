@@ -4,9 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
  * AI receipt parsing with support for both Groq and Lovable AI Gateway.
- * Automatically detects which API to use based on the API key prefix:
- * - 'gsk_' → Groq API (FREE) - Uses llama-3.2-90b-vision-preview
- * - 'sk_' or 'lv_' → Lovable AI Gateway
+ * Groq uses the latest Llama 4 Scout vision model.
  */
 
 const ParseSchema = z.object({ storage_path: z.string().min(1) });
@@ -41,7 +39,7 @@ export const parseReceipt = createServerFn({ method: "POST" })
       throw new Error("AI gateway not configured - missing API key");
     }
 
-    // ✅ DETECT WHICH API TO USE
+    // Detect which API to use
     const isGroq = apiKey.startsWith('gsk_');
     console.log(`[Scanner] Using API: ${isGroq ? 'Groq' : 'Lovable'}`);
 
@@ -75,11 +73,13 @@ export const parseReceipt = createServerFn({ method: "POST" })
 
     let aiRes: Response;
 
-    // ✅ ========================================
-    // ✅ GROQ API (FREE) - UPDATED MODEL
-    // ✅ ========================================
+    // ========================================
+    // GROQ API - UPDATED TO LLAMA 4 SCOUT
+    // ========================================
     if (isGroq) {
-      console.log('[Scanner] 🔄 Using Groq API with llama-3.2-90b-vision-preview...');
+      // ✅ UPDATED: Using the current Groq vision model
+      const groqModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+      console.log(`[Scanner] 🔄 Using Groq API with ${groqModel}...`);
       
       // Convert image to base64 for Groq
       const imageResponse = await fetch(signed.signedUrl);
@@ -88,8 +88,7 @@ export const parseReceipt = createServerFn({ method: "POST" })
       const mimeType = imageResponse.headers.get('content-type') || 'image/jpeg';
       
       const groqBody = {
-        // ✅ UPDATED: Using the current working Groq vision model
-        model: "llama-3.2-90b-vision-preview",
+        model: groqModel,
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -121,9 +120,9 @@ export const parseReceipt = createServerFn({ method: "POST" })
         body: JSON.stringify(groqBody),
       });
 
-    // ✅ ========================================
-    // ✅ LOVABLE AI GATEWAY (Fallback)
-    // ✅ ========================================
+    // ========================================
+    // LOVABLE AI GATEWAY (Fallback)
+    // ========================================
     } else {
       console.log('[Scanner] 🔄 Using Lovable AI Gateway...');
       
@@ -154,9 +153,9 @@ export const parseReceipt = createServerFn({ method: "POST" })
       });
     }
 
-    // ✅ ========================================
-    // ✅ Handle Response
-    // ✅ ========================================
+    // ========================================
+    // Handle Response
+    // ========================================
     if (!aiRes.ok) {
       const body = await aiRes.text();
       console.error(`[Scanner] ❌ API error (${aiRes.status}):`, body);
@@ -176,9 +175,9 @@ export const parseReceipt = createServerFn({ method: "POST" })
 
     console.log('[Scanner] ✅ API response received');
 
-    // ✅ ========================================
-    // ✅ Parse JSON Response
-    // ✅ ========================================
+    // ========================================
+    // Parse JSON Response
+    // ========================================
     const json = (await aiRes.json()) as {
       choices?: { message?: { content?: string } }[];
     };
