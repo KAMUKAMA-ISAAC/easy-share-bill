@@ -4,7 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { createShareLink } from "@/lib/expenses.functions";
 import { formatDate, formatMoney, initialsOf } from "@/lib/format";
-import { ArrowLeft, Check, Receipt, Share2, MessageCircle, Mail, Link2 } from "lucide-react";
+import { ArrowLeft, Check, Receipt, Share2, MessageCircle, Mail, Link2, Copy } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { useState } from "react";
 
