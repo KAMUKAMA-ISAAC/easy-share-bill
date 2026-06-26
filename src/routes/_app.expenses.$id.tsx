@@ -218,9 +218,25 @@ function ExpenseDetail() {
           </button>
         ) : (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 rounded-xl bg-muted/40 px-3 py-2 text-xs font-mono truncate">
+            <div className="flex justify-center bg-white rounded-xl p-4">
+              <QRCodeSVG value={shareUrl} size={180} level="M" includeMargin={false} />
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              Scan with a phone camera to open the share link
+            </p>
+            <div className="flex items-center gap-2 rounded-xl bg-muted/40 px-3 py-2 text-xs font-mono">
               <Link2 className="size-3.5 text-muted-foreground shrink-0" />
-              <span className="truncate">{shareUrl}</span>
+              <span className="truncate flex-1">{shareUrl}</span>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(shareUrl);
+                  toast.success("Link copied");
+                }}
+                className="shrink-0 p-1 hover:text-foreground text-muted-foreground"
+                title="Copy"
+              >
+                <Copy className="size-3.5" />
+              </button>
             </div>
             <div className="grid grid-cols-3 gap-2">
               <a
