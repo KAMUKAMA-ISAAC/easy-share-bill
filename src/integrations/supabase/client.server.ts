@@ -32,14 +32,13 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 function createSupabaseAdminClient() {
   const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   
-  // ✅ FIXED: Try multiple possible key names
+  // 🔑 Try multiple key names - Lovable allows SERVICE_ROLE_KEY (without SUPABASE_ prefix)
   const SUPABASE_SERVICE_ROLE_KEY = 
-    process.env.SERVICE_ROLE_KEY ||           // Added to Lovable Secrets
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||  // Standard name (Vercel)
+    process.env.SERVICE_ROLE_KEY ||           // ✅ Added to Lovable Secrets
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||  // Standard name (Vercel only)
     process.env.SB_SERVICE_ROLE_KEY ||        // Alternative
     process.env.LOVABLE_SUPABASE_KEY;         // Another alternative
 
-  // ✅ IMPROVED: Better error messages
   if (!SUPABASE_URL) {
     const message = `Missing Supabase environment variable: SUPABASE_URL. Connect Supabase in Lovable Cloud.`;
     console.error(`[Supabase] ${message}`);
@@ -47,17 +46,20 @@ function createSupabaseAdminClient() {
   }
 
   if (!SUPABASE_SERVICE_ROLE_KEY) {
-    const message = `Missing service role key. Tried: SERVICE_ROLE_KEY, SUPABASE_SERVICE_ROLE_KEY, SB_SERVICE_ROLE_KEY. Add one to Lovable Secrets or Vercel environment variables.`;
+    const message = `Missing service role key. Tried: SERVICE_ROLE_KEY, SUPABASE_SERVICE_ROLE_KEY, SB_SERVICE_ROLE_KEY. Add one to Lovable Secrets or Vercel.`;
     console.error(`[Supabase] ${message}`);
     throw new Error(message);
   }
 
-  console.log(`[Supabase] ✅ Using service role key from: ${Object.keys(process.env).find(key => 
+  // Log which key source is being used (for debugging)
+  const keySource = Object.keys(process.env).find(key => 
     key === 'SERVICE_ROLE_KEY' || 
     key === 'SUPABASE_SERVICE_ROLE_KEY' || 
     key === 'SB_SERVICE_ROLE_KEY' || 
     key === 'LOVABLE_SUPABASE_KEY'
-  ) || 'unknown source'}`);
+  ) || 'unknown';
+  
+  console.log(`[Supabase Admin] ✅ Using service role key from: ${keySource}`);
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     global: {
