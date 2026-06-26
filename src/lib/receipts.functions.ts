@@ -5,7 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 /**
  * AI receipt parsing with support for both Groq and Lovable AI Gateway.
  * Automatically detects which API to use based on the API key prefix:
- * - 'gsk_' → Groq API (FREE)
+ * - 'gsk_' → Groq API (FREE) - Uses llama-3.2-90b-vision-preview
  * - 'sk_' or 'lv_' → Lovable AI Gateway
  */
 
@@ -76,10 +76,10 @@ export const parseReceipt = createServerFn({ method: "POST" })
     let aiRes: Response;
 
     // ✅ ========================================
-    // ✅ GROQ API (FREE) - CORRECT IMPLEMENTATION
+    // ✅ GROQ API (FREE) - UPDATED MODEL
     // ✅ ========================================
     if (isGroq) {
-      console.log('[Scanner] 🔄 Using Groq API...');
+      console.log('[Scanner] 🔄 Using Groq API with llama-3.2-90b-vision-preview...');
       
       // Convert image to base64 for Groq
       const imageResponse = await fetch(signed.signedUrl);
@@ -88,7 +88,8 @@ export const parseReceipt = createServerFn({ method: "POST" })
       const mimeType = imageResponse.headers.get('content-type') || 'image/jpeg';
       
       const groqBody = {
-        model: "llama-3.2-11b-vision-preview",
+        // ✅ UPDATED: Using the current working Groq vision model
+        model: "llama-3.2-90b-vision-preview",
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -111,7 +112,6 @@ export const parseReceipt = createServerFn({ method: "POST" })
 
       console.log('[Scanner] 📤 Sending to Groq API...');
       
-      // ✅ CORRECT: Use Groq's API URL
       aiRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -144,7 +144,6 @@ export const parseReceipt = createServerFn({ method: "POST" })
 
       console.log('[Scanner] 📤 Sending to Lovable AI Gateway...');
       
-      // ✅ CORRECT: Use Lovable's Gateway URL
       aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
