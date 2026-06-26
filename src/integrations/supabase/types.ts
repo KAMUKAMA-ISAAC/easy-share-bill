@@ -344,6 +344,7 @@ export type Database = {
           momo_name: string | null
           momo_number: string | null
           momo_provider: string | null
+          phone: string | null
           updated_at: string
         }
         Insert: {
@@ -358,6 +359,7 @@ export type Database = {
           momo_name?: string | null
           momo_number?: string | null
           momo_provider?: string | null
+          phone?: string | null
           updated_at?: string
         }
         Update: {
@@ -372,6 +374,7 @@ export type Database = {
           momo_name?: string | null
           momo_number?: string | null
           momo_provider?: string | null
+          phone?: string | null
           updated_at?: string
         }
         Relationships: []
