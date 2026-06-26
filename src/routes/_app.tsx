@@ -82,9 +82,13 @@ function AppShell() {
             >
               <Settings className="size-4" />
             </Link>
-            <div className="size-9 rounded-full bg-gradient-to-br from-primary/40 to-accent/40 grid place-items-center text-sm font-medium">
+            <Link
+              to="/profile"
+              className="size-9 rounded-full bg-gradient-to-br from-primary/40 to-accent/40 grid place-items-center text-sm font-medium hover:opacity-90 transition"
+              title="Profile"
+            >
               {initialsOf(name)}
-            </div>
+            </Link>
             <button
               onClick={async () => {
                 await supabase.auth.signOut();
