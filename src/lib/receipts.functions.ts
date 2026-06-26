@@ -5,7 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 /**
  * AI receipt parsing with support for both Groq and Lovable AI Gateway.
  * Automatically detects which API to use based on the API key prefix:
- * - 'gsk_' → Groq API
+ * - 'gsk_' → Groq API (FREE)
  * - 'sk_' or 'lv_' → Lovable AI Gateway
  */
 
@@ -37,22 +37,15 @@ export const parseReceipt = createServerFn({ method: "POST" })
     // Get API key - try Groq first, then Lovable
     const apiKey = process.env.GROQ_API_KEY || process.env.LOVABLE_API_KEY;
     if (!apiKey) {
-      console.error('[Scanner] ❌ No API key found. Set GROQ_API_KEY or LOVABLE_API_KEY');
+      console.error('[Scanner] ❌ No API key found');
       throw new Error("AI gateway not configured - missing API key");
     }
 
-    // Detect which API to use based on key format
+    // ✅ DETECT WHICH API TO USE
     const isGroq = apiKey.startsWith('gsk_');
-    const isLovable = apiKey.startsWith('sk_') || apiKey.startsWith('lv_');
-    
-    console.log(`[Scanner] Using API: ${isGroq ? 'Groq' : isLovable ? 'Lovable' : 'Unknown'}`);
-    
-    // Check for valid key format
-    if (!isGroq && !isLovable) {
-      console.warn('[Scanner] ⚠️ Unknown API key format. Expected: gsk_ (Groq) or sk_/lv_ (Lovable)');
-    }
+    console.log(`[Scanner] Using API: ${isGroq ? 'Groq' : 'Lovable'}`);
 
-    // Signed URL the vision model can fetch directly
+    // Signed URL for the receipt image
     const { data: signed, error: signErr } = await supabase.storage
       .from("receipts")
       .createSignedUrl(data.storage_path, 60 * 10);
@@ -61,9 +54,8 @@ export const parseReceipt = createServerFn({ method: "POST" })
       console.error('[Scanner] ❌ Signed URL error:', signErr);
       throw new Error(signErr?.message ?? "Could not load receipt image");
     }
-    console.log('[Scanner] ✅ Signed URL created successfully');
+    console.log('[Scanner] ✅ Signed URL created');
 
-    // System prompt for receipt parsing
     const systemPrompt =
       "You are a receipt OCR engine. Read the receipt photo and return ONLY a JSON object matching this schema (no prose, no markdown):\n" +
       "{\n" +
@@ -82,13 +74,12 @@ export const parseReceipt = createServerFn({ method: "POST" })
       "- If a value is missing on the receipt, use 0.";
 
     let aiRes: Response;
-    let requestBody: any;
 
+    // ✅ ========================================
+    // ✅ GROQ API (FREE) - CORRECT IMPLEMENTATION
+    // ✅ ========================================
     if (isGroq) {
-      // ========================================
-      // GROQ API (Free, uses llama-3.2 vision)
-      // ========================================
-      console.log('[Scanner] Preparing request for Groq API...');
+      console.log('[Scanner] 🔄 Using Groq API...');
       
       // Convert image to base64 for Groq
       const imageResponse = await fetch(signed.signedUrl);
@@ -96,7 +87,7 @@ export const parseReceipt = createServerFn({ method: "POST" })
       const base64Image = Buffer.from(imageBuffer).toString('base64');
       const mimeType = imageResponse.headers.get('content-type') || 'image/jpeg';
       
-      requestBody = {
+      const groqBody = {
         model: "llama-3.2-11b-vision-preview",
         messages: [
           { role: "system", content: systemPrompt },
@@ -118,22 +109,25 @@ export const parseReceipt = createServerFn({ method: "POST" })
         response_format: { type: "json_object" },
       };
 
+      console.log('[Scanner] 📤 Sending to Groq API...');
+      
+      // ✅ CORRECT: Use Groq's API URL
       aiRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify(groqBody),
       });
 
+    // ✅ ========================================
+    // ✅ LOVABLE AI GATEWAY (Fallback)
+    // ✅ ========================================
     } else {
-      // ========================================
-      // LOVABLE AI GATEWAY (Gemini via Lovable)
-      // ========================================
-      console.log('[Scanner] Preparing request for Lovable AI Gateway...');
+      console.log('[Scanner] 🔄 Using Lovable AI Gateway...');
       
-      requestBody = {
+      const lovableBody = {
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
@@ -148,19 +142,22 @@ export const parseReceipt = createServerFn({ method: "POST" })
         response_format: { type: "json_object" },
       };
 
+      console.log('[Scanner] 📤 Sending to Lovable AI Gateway...');
+      
+      // ✅ CORRECT: Use Lovable's Gateway URL
       aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify(lovableBody),
       });
     }
 
-    // ========================================
-    // Handle API Response
-    // ========================================
+    // ✅ ========================================
+    // ✅ Handle Response
+    // ✅ ========================================
     if (!aiRes.ok) {
       const body = await aiRes.text();
       console.error(`[Scanner] ❌ API error (${aiRes.status}):`, body);
@@ -174,24 +171,20 @@ export const parseReceipt = createServerFn({ method: "POST" })
       if (aiRes.status === 402) {
         throw new Error("AI credits exhausted — check your account");
       }
-      if (aiRes.status === 403) {
-        throw new Error("Access denied — check API permissions");
-      }
-      if (aiRes.status === 404) {
-        throw new Error("Model not found — check API configuration");
-      }
       
       throw new Error(`AI gateway error (${aiRes.status}): ${body.slice(0, 200)}`);
     }
 
-    // ========================================
-    // Parse AI Response
-    // ========================================
+    console.log('[Scanner] ✅ API response received');
+
+    // ✅ ========================================
+    // ✅ Parse JSON Response
+    // ✅ ========================================
     const json = (await aiRes.json()) as {
       choices?: { message?: { content?: string } }[];
     };
     const raw = json.choices?.[0]?.message?.content ?? "";
-    console.log('[Scanner] AI response received, parsing JSON...');
+    console.log('[Scanner] Raw response:', raw.slice(0, 200) + '...');
 
     let parsed: z.infer<typeof ParsedJsonSchema>;
     try {
@@ -200,26 +193,21 @@ export const parseReceipt = createServerFn({ method: "POST" })
         .replace(/```$/i, "")
         .trim();
       parsed = ParsedJsonSchema.parse(JSON.parse(cleaned));
-      console.log('[Scanner] ✅ Parsed receipt data:', parsed);
+      console.log('[Scanner] ✅ Parsed successfully:', parsed);
     } catch (e) {
       console.error('[Scanner] ❌ JSON parsing error:', e);
-      console.error('[Scanner] Raw response:', raw);
       throw new Error("Could not understand the receipt — try a clearer photo");
     }
 
-    // ========================================
-    // Reconcile Total if Missing
-    // ========================================
+    // Reconcile total if missing
     if (!parsed.total || parsed.total === 0) {
       const sum = parsed.items.reduce((a, it) => a + it.price * (it.quantity ?? 1), 0);
       parsed.total = Math.round((sum + (parsed.tax ?? 0)) * 100) / 100;
       console.log('[Scanner] Calculated total:', parsed.total);
     }
 
-    // ========================================
-    // Save to Database
-    // ========================================
-    console.log('[Scanner] Saving receipt to database...');
+    // Save to database
+    console.log('[Scanner] 💾 Saving to database...');
     const { data: receipt, error } = await supabase
       .from("receipts")
       .insert({
