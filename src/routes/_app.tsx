@@ -78,10 +78,11 @@ function AppShell() {
             <Link
               to="/settings"
               className="size-9 grid place-items-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition"
-              title="Payment settings"
+              title="Settings"
             >
               <Settings className="size-4" />
             </Link>
+
             <Link
               to="/profile"
               className="size-9 rounded-full bg-gradient-to-br from-primary/40 to-accent/40 grid place-items-center text-sm font-medium hover:opacity-90 transition"

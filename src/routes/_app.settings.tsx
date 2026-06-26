@@ -1,79 +1,79 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery, useMutation } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/use-auth";
-import { ArrowLeft, Loader2, Smartphone, Landmark, Save } from "lucide-react";
+import {
+  ArrowLeft,
+  Bell,
+  Globe,
+  Sun,
+  Moon,
+  Monitor,
+  Wallet,
+  User as UserIcon,
+  LogOut,
+  ChevronRight,
+  Coins,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/settings")({
-  head: () => ({ meta: [{ title: "Payment settings — Splitit" }] }),
+  head: () => ({ meta: [{ title: "Settings — Splitit" }] }),
   component: SettingsPage,
 });
 
+const PREFS_KEY = "splitit:prefs";
+
+type Prefs = {
+  theme: "light" | "dark" | "system";
+  defaultCurrency: string;
+  language: string;
+  notifyEmail: boolean;
+  notifyPush: boolean;
+};
+
+const DEFAULTS: Prefs = {
+  theme: "system",
+  defaultCurrency: "UGX",
+  language: "en",
+  notifyEmail: true,
+  notifyPush: true,
+};
+
+function loadPrefs(): Prefs {
+  if (typeof window === "undefined") return DEFAULTS;
+  try {
+    return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(PREFS_KEY) || "{}") };
+  } catch {
+    return DEFAULTS;
+  }
+}
+
+function applyTheme(theme: Prefs["theme"]) {
+  if (typeof window === "undefined") return;
+  const root = document.documentElement;
+  const dark =
+    theme === "dark" ||
+    (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  root.classList.toggle("dark", dark);
+}
+
 function SettingsPage() {
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-
-  const [momoProvider, setMomoProvider] = useState<string>("");
-  const [momoNumber, setMomoNumber] = useState("");
-  const [momoName, setMomoName] = useState("");
-  const [bankName, setBankName] = useState("");
-  const [bankAccountNumber, setBankAccountNumber] = useState("");
-  const [bankAccountName, setBankAccountName] = useState("");
-
-  const profileQ = useQuery({
-    queryKey: ["my-profile"],
-    enabled: !!user,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select(
-          "momo_provider, momo_number, momo_name, bank_name, bank_account_number, bank_account_name",
-        )
-        .eq("id", user!.id)
-        .maybeSingle();
-      return data;
-    },
-  });
+  const [prefs, setPrefs] = useState<Prefs>(DEFAULTS);
 
   useEffect(() => {
-    if (!profileQ.data) return;
-    setMomoProvider(profileQ.data.momo_provider ?? "");
-    setMomoNumber(profileQ.data.momo_number ?? "");
-    setMomoName(profileQ.data.momo_name ?? "");
-    setBankName(profileQ.data.bank_name ?? "");
-    setBankAccountNumber(profileQ.data.bank_account_number ?? "");
-    setBankAccountName(profileQ.data.bank_account_name ?? "");
-  }, [profileQ.data]);
+    setPrefs(loadPrefs());
+  }, []);
 
-  const save = useMutation({
-    mutationFn: async () => {
-      if (!user) throw new Error("Not signed in");
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          momo_provider: momoProvider || null,
-          momo_number: momoNumber || null,
-          momo_name: momoName || null,
-          bank_name: bankName || null,
-          bank_account_number: bankAccountNumber || null,
-          bank_account_name: bankAccountName || null,
-        })
-        .eq("id", user.id);
-      if (error) throw error;
-    },
-    onSuccess: () => toast.success("Payment details saved"),
-    onError: (e: any) => toast.error(e.message ?? "Failed to save"),
-  });
-
-  if (loading) {
-    return (
-      <div className="grid place-items-center py-20">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  const update = (patch: Partial<Prefs>) => {
+    const next = { ...prefs, ...patch };
+    setPrefs(next);
+    localStorage.setItem(PREFS_KEY, JSON.stringify(next));
+    if (patch.theme) applyTheme(patch.theme);
+    toast.success("Saved");
+  };
 
   return (
     <div className="mx-auto max-w-2xl px-4 sm:px-6 py-8">
@@ -83,119 +83,211 @@ function SettingsPage() {
       >
         <ArrowLeft className="size-4" /> Back
       </button>
-      <h1 className="font-display text-3xl font-semibold tracking-tight mb-1">
-        Payment details
-      </h1>
+      <h1 className="font-display text-3xl font-semibold tracking-tight mb-1">Settings</h1>
       <p className="text-sm text-muted-foreground mb-8">
-        Shown to guests on your shared bills so they know how to pay you back.
-        Optional — leave any field blank if you don't use it.
+        App preferences and account.
       </p>
 
-      <div className="glass-card rounded-2xl p-5 mb-5 space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Smartphone className="size-4 text-primary" />
-          <h2 className="font-semibold text-sm">Mobile money</h2>
+      {/* Appearance */}
+      <Section title="Appearance" icon={<Sun className="size-4 text-primary" />}>
+        <div className="grid grid-cols-3 gap-2">
+          {(
+            [
+              { v: "light", label: "Light", Icon: Sun },
+              { v: "dark", label: "Dark", Icon: Moon },
+              { v: "system", label: "System", Icon: Monitor },
+            ] as const
+          ).map(({ v, label, Icon }) => (
+            <button
+              key={v}
+              onClick={() => update({ theme: v })}
+              className={`flex flex-col items-center gap-1.5 rounded-xl border px-3 py-3 text-sm transition ${
+                prefs.theme === v
+                  ? "border-primary bg-primary/5 text-foreground"
+                  : "border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="size-4" />
+              {label}
+            </button>
+          ))}
         </div>
-        <div>
-          <label className="text-xs uppercase tracking-wider text-muted-foreground">
-            Provider
-          </label>
+      </Section>
+
+      {/* Defaults */}
+      <Section title="Defaults" icon={<Coins className="size-4 text-primary" />}>
+        <Field label="Default currency">
           <select
-            value={momoProvider}
-            onChange={(e) => setMomoProvider(e.target.value)}
-            className="mt-1 w-full rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary"
+            value={prefs.defaultCurrency}
+            onChange={(e) => update({ defaultCurrency: e.target.value })}
+            className="w-full rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary"
           >
-            <option value="">Choose provider…</option>
-            <option value="mtn_momo">MTN Mobile Money</option>
-            <option value="airtel_money">Airtel Money</option>
+            <option value="UGX">Ugandan Shilling (UGX)</option>
+            <option value="USD">US Dollar (USD)</option>
+            <option value="EUR">Euro (EUR)</option>
+            <option value="GBP">British Pound (GBP)</option>
+            <option value="KES">Kenyan Shilling (KES)</option>
+            <option value="TZS">Tanzanian Shilling (TZS)</option>
           </select>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">
-              Phone number
-            </label>
-            <input
-              value={momoNumber}
-              onChange={(e) => setMomoNumber(e.target.value)}
-              placeholder="07XXXXXXXX"
-              className="mt-1 w-full rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary font-numeric"
-            />
-          </div>
-          <div>
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">
-              Registered name
-            </label>
-            <input
-              value={momoName}
-              onChange={(e) => setMomoName(e.target.value)}
-              placeholder="Jane Doe"
-              className="mt-1 w-full rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary"
-            />
-          </div>
-        </div>
-      </div>
+        </Field>
+        <Field label="Language" icon={<Globe className="size-3" />}>
+          <select
+            value={prefs.language}
+            onChange={(e) => update({ language: e.target.value })}
+            className="w-full rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary"
+          >
+            <option value="en">English</option>
+            <option value="sw">Kiswahili</option>
+            <option value="lg">Luganda</option>
+          </select>
+        </Field>
+      </Section>
 
-      <div className="glass-card rounded-2xl p-5 mb-6 space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Landmark className="size-4 text-primary" />
-          <h2 className="font-semibold text-sm">Bank transfer</h2>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">
-              Bank
-            </label>
-            <input
-              value={bankName}
-              onChange={(e) => setBankName(e.target.value)}
-              placeholder="Stanbic, Equity…"
-              className="mt-1 w-full rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary"
-            />
-          </div>
-          <div>
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">
-              Account number
-            </label>
-            <input
-              value={bankAccountNumber}
-              onChange={(e) => setBankAccountNumber(e.target.value)}
-              className="mt-1 w-full rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary font-numeric"
-            />
-          </div>
-        </div>
-        <div>
-          <label className="text-xs uppercase tracking-wider text-muted-foreground">
-            Account name
-          </label>
-          <input
-            value={bankAccountName}
-            onChange={(e) => setBankAccountName(e.target.value)}
-            className="mt-1 w-full rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary"
-          />
-        </div>
-      </div>
+      {/* Notifications */}
+      <Section title="Notifications" icon={<Bell className="size-4 text-primary" />}>
+        <Toggle
+          label="Email notifications"
+          description="Receipts, reminders, and settlement updates"
+          checked={prefs.notifyEmail}
+          onChange={(v) => update({ notifyEmail: v })}
+        />
+        <Toggle
+          label="Push notifications"
+          description="When a friend pays or claims an item"
+          checked={prefs.notifyPush}
+          onChange={(v) => update({ notifyPush: v })}
+        />
+      </Section>
 
-      <div className="flex justify-end">
+      {/* Account */}
+      <Section title="Account" icon={<UserIcon className="size-4 text-primary" />}>
+        <LinkRow
+          to="/profile"
+          icon={<UserIcon className="size-4" />}
+          title="Profile"
+          subtitle="Name, photo, contact"
+        />
+        <LinkRow
+          to="/settings/payments"
+          icon={<Wallet className="size-4" />}
+          title="Payment details"
+          subtitle="Mobile money & bank info shown to guests"
+        />
         <button
-          onClick={() => save.mutate()}
-          disabled={save.isPending}
-          className="inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-6 py-2.5 font-medium hover:opacity-90 transition disabled:opacity-50"
+          onClick={async () => {
+            await supabase.auth.signOut();
+            navigate({ to: "/" });
+          }}
+          className="w-full flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-muted/60 transition text-destructive"
         >
-          {save.isPending ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Save className="size-4" />
-          )}
-          Save details
+          <LogOut className="size-4" />
+          <span className="text-sm font-medium">Sign out</span>
         </button>
-      </div>
-
-      <p className="text-xs text-muted-foreground mt-6">
-        Mock checkout is enabled — guest payments are recorded but no real money
-        moves. Connect a payment processor later to take real payments.
-      </p>
-      <Link to="/dashboard" className="hidden">noop</Link>
+        <p className="text-xs text-muted-foreground px-3 pt-1">
+          Signed in as {user?.email}
+        </p>
+      </Section>
     </div>
+  );
+}
+
+function Section({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="glass-card rounded-2xl p-5 mb-5">
+      <div className="flex items-center gap-2 mb-4">
+        {icon}
+        <h2 className="font-semibold text-sm">{title}</h2>
+      </div>
+      <div className="space-y-3">{children}</div>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  icon,
+  children,
+}: {
+  label: string;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label className="text-xs uppercase tracking-wider text-muted-foreground inline-flex items-center gap-1.5 mb-1">
+        {icon}
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function Toggle({
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      onClick={() => onChange(!checked)}
+      className="w-full flex items-center justify-between gap-3 rounded-xl px-3 py-3 hover:bg-muted/60 transition text-left"
+    >
+      <div className="min-w-0">
+        <p className="text-sm font-medium">{label}</p>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+      <span
+        className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition ${
+          checked ? "bg-primary" : "bg-muted"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition ${
+            checked ? "left-[22px]" : "left-0.5"
+          }`}
+        />
+      </span>
+    </button>
+  );
+}
+
+function LinkRow({
+  to,
+  icon,
+  title,
+  subtitle,
+}: {
+  to: string;
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <Link
+      to={to}
+      className="flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-muted/60 transition"
+    >
+      <div className="text-muted-foreground">{icon}</div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium">{title}</p>
+        <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
+      </div>
+      <ChevronRight className="size-4 text-muted-foreground" />
+    </Link>
   );
 }
