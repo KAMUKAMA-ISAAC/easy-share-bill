@@ -18,6 +18,19 @@ function AppShell() {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [user, loading, navigate]);
 
+  // Apply saved theme preference on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("splitit:prefs");
+      const theme = raw ? (JSON.parse(raw).theme as string) : "system";
+      const dark =
+        theme === "dark" ||
+        (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.classList.toggle("dark", dark);
+    } catch {}
+  }, []);
+
+
   if (loading || !user) {
     return (
       <div className="min-h-screen grid place-items-center">
