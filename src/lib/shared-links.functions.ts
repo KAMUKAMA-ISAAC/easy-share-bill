@@ -9,44 +9,46 @@ import { z } from "zod";
 const TokenSchema = z.object({ token: z.string().min(8).max(200) });
 
 async function loadLink(token: string) {
-  console.log(`[Share] 🔍 Looking for token: ${token}`);
+  console.log(`[Share] 🔍 Looking for token: "${token}"`);
+  console.log(`[Share] 📝 Token length: ${token.length}`);
+  console.log(`[Share] 📝 Token type: ${typeof token}`);
   
-  // ✅ Get the admin client with better error handling
-  let supabaseAdmin;
-  try {
-    const module = await import("@/integrations/supabase/client.server");
-    supabaseAdmin = module.supabaseAdmin;
-    console.log('[Share] ✅ Supabase admin client loaded');
-  } catch (error) {
-    console.error('[Share] ❌ Failed to load supabase admin:', error);
-    throw new Error("Server configuration error: Unable to load database client");
-  }
-
-  // ✅ Query the shared_links table
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  
+  console.log(`[Share] 📝 Querying shared_links table...`);
+  
   const { data: link, error } = await supabaseAdmin
     .from("shared_links")
     .select("resource_type, resource_id, expires_at")
     .eq("token", token)
     .maybeSingle();
 
-  // ✅ Log the result for debugging
+  console.log(`[Share] 📊 Query result:`, { link, error });
+
   if (error) {
-    console.error('[Share] ❌ Database error:', error);
+    console.error(`[Share] ❌ Database error:`, error);
     throw new Error(`Database error: ${error.message}`);
   }
 
   if (!link) {
-    console.error(`[Share] ❌ No link found for token: ${token}`);
+    console.error(`[Share] ❌ No link found for token: "${token}"`);
+    
+    // Log all tokens to see what exists
+    const { data: allLinks } = await supabaseAdmin
+      .from("shared_links")
+      .select("token")
+      .limit(5);
+    console.log(`[Share] 📋 Sample tokens in DB:`, allLinks);
+    
     throw new Error("Link not found or expired");
   }
-
-  console.log(`[Share] ✅ Found link:`, link);
 
   if (link.expires_at && new Date(link.expires_at) < new Date()) {
     console.error(`[Share] ❌ Link expired at: ${link.expires_at}`);
     throw new Error("This link has expired");
   }
 
+  console.log(`[Share] ✅ Found link:`, link);
   return { link, supabaseAdmin };
 }
 
