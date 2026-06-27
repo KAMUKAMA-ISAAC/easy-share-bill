@@ -406,19 +406,40 @@ function ItemClaimSection({
 
   if (step === "pay") {
     return (
-      <PayPanel
-        amount={selectedTotal}
-        currency={expense.currency}
-        payerPayment={payerPayment}
-        method={method}
-        setMethod={setMethod}
-        reference={reference}
-        setReference={setReference}
-        onPay={() => pay.mutate()}
-        pending={pay.isPending}
-      />
+      <>
+        <PayPanel
+          amount={selectedTotal}
+          currency={expense.currency}
+          payerPayment={payerPayment}
+          guestName={guestName}
+          method={method}
+          setMethod={setMethod}
+          payerPhone={payerPhone}
+          setPayerPhone={setPayerPhone}
+          cardNumber={cardNumber}
+          setCardNumber={setCardNumber}
+          cardExpiry={cardExpiry}
+          setCardExpiry={setCardExpiry}
+          cardCvv={cardCvv}
+          setCardCvv={setCardCvv}
+          bankRef={bankRef}
+          setBankRef={setBankRef}
+          onPay={startPay}
+          pending={pay.isPending || approvalOpen}
+        />
+        {approvalOpen && (
+          <MomoApprovalModal
+            phone={payerPhone}
+            amount={selectedTotal}
+            currency={expense.currency}
+            method={method as "mtn_momo" | "airtel_money"}
+            payeeName={payerPayment?.momo_name ?? payerPayment?.display_name ?? "Splitit organiser"}
+          />
+        )}
+      </>
     );
   }
+
 
   return (
     <div className="glass-card rounded-2xl overflow-hidden mb-5">
