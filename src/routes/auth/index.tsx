@@ -52,7 +52,6 @@ function AuthPage() {
         });
         if (error) throw error;
         toast.success("Account created — welcome!");
-        // Sign in immediately after signup
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
         if (signInError) throw signInError;
         navigate({ to: "/dashboard" });
@@ -71,7 +70,6 @@ function AuthPage() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
-      {/* Left: brand panel */}
       <div className="hidden lg:flex relative p-12 flex-col justify-between overflow-hidden">
         <div className="absolute inset-0" style={{ background: "var(--gradient-hero)" }} />
         <Link to="/" className="relative flex items-center gap-2 z-10">
@@ -95,7 +93,6 @@ function AuthPage() {
         </div>
       </div>
 
-      {/* Right: form */}
       <div className="flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-sm">
           <div className="lg:hidden mb-8">
@@ -147,9 +144,7 @@ function AuthPage() {
                 show={showConfirm}
                 onToggle={() => setShowConfirm((s) => !s)}
                 placeholder="Confirm password"
-                mismatch={
-                  confirmPassword.length > 0 && confirmPassword !== password
-                }
+                mismatch={confirmPassword.length > 0 && confirmPassword !== password}
               />
             )}
             <button
