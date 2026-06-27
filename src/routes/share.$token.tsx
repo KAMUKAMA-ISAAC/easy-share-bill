@@ -59,11 +59,24 @@ function GuestShare() {
     );
   }
   if (q.error) {
+    const msg = (q.error as Error).message || "";
+    const isConfig =
+      /service role|SUPABASE_URL|missing|env/i.test(msg);
     return (
       <div className="min-h-screen grid place-items-center px-4">
         <div className="text-center max-w-md">
           <h1 className="font-display text-2xl font-semibold">Link unavailable</h1>
-          <p className="text-muted-foreground mt-2">{(q.error as Error).message}</p>
+          <p className="text-muted-foreground mt-2 text-sm">{msg}</p>
+          {isConfig && (
+            <div className="mt-4 rounded-xl border border-border bg-card/60 p-4 text-left text-xs text-muted-foreground">
+              <div className="font-medium text-foreground mb-1">Deployment hint</div>
+              Set <code className="font-numeric">SUPABASE_URL</code>,{" "}
+              <code className="font-numeric">SUPABASE_SERVICE_ROLE_KEY</code>,{" "}
+              <code className="font-numeric">VITE_SUPABASE_URL</code> and{" "}
+              <code className="font-numeric">VITE_SUPABASE_ANON_KEY</code> in your Vercel project
+              env, then redeploy. See <code>DEPLOYMENT.md</code>.
+            </div>
+          )}
           <Link to="/" className="mt-6 inline-block text-primary hover:underline">
             Go to Splitit
           </Link>
@@ -71,6 +84,7 @@ function GuestShare() {
       </div>
     );
   }
+
 
   const data = q.data!;
   return (
