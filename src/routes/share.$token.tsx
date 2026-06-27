@@ -282,7 +282,12 @@ function ItemClaimSection({
   const [step, setStep] = useState<"pick" | "pay" | "done">("pick");
   const [createdClaimIds, setCreatedClaimIds] = useState<string[]>([]);
   const [method, setMethod] = useState<"mtn_momo" | "airtel_money" | "bank_transfer">("mtn_momo");
-  const [reference, setReference] = useState("");
+  const [payerPhone, setPayerPhone] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvv, setCardCvv] = useState("");
+  const [bankRef, setBankRef] = useState("");
+  const [approvalOpen, setApprovalOpen] = useState(false);
 
   const selectedTotal = useMemo(() => {
     let sum = 0;
@@ -318,18 +323,64 @@ function ItemClaimSection({
     onError: (e: any) => toast.error(e.message ?? "Could not claim"),
   });
 
+  const buildReference = () => {
+    if (method === "bank_transfer") {
+      if (cardNumber.length >= 12) {
+        return `CARD •••• ${cardNumber.replace(/\s/g, "").slice(-4)}`;
+      }
+      return bankRef || undefined;
+    }
+    return payerPhone ? `From ${payerPhone}` : undefined;
+  };
+
   const pay = useMutation({
     mutationFn: () =>
       payFn({
-        data: { token, claim_ids: createdClaimIds, method, reference: reference || undefined },
+        data: {
+          token,
+          claim_ids: createdClaimIds,
+          method,
+          reference: buildReference(),
+        },
       }),
     onSuccess: (res) => {
+      setApprovalOpen(false);
       setStep("done");
       toast.success(`Paid ${formatMoney(res.total, expense.currency)} via mock checkout`);
       qc.invalidateQueries({ queryKey: ["share", token] });
     },
-    onError: (e: any) => toast.error(e.message ?? "Payment failed"),
+    onError: (e: any) => {
+      setApprovalOpen(false);
+      toast.error(e.message ?? "Payment failed");
+    },
   });
+
+  const startPay = () => {
+    if (method !== "bank_transfer") {
+      if (!/^[0-9+\s-]{9,15}$/.test(payerPhone.trim())) {
+        toast.error("Enter a valid Mobile Money number");
+        return;
+      }
+      setApprovalOpen(true);
+      // Simulate user approving on their phone after a short delay
+      setTimeout(() => pay.mutate(), 1800);
+      return;
+    }
+    // bank
+    const isCard = cardNumber.replace(/\s/g, "").length >= 12;
+    if (!isCard && !bankRef.trim()) {
+      toast.error("Enter card details or a bank transfer reference");
+      return;
+    }
+    if (isCard) {
+      if (!/^\d{2}\/\d{2}$/.test(cardExpiry) || cardCvv.length < 3) {
+        toast.error("Check card expiry (MM/YY) and CVV");
+        return;
+      }
+    }
+    pay.mutate();
+  };
+
 
   if (step === "done") {
     return (
