@@ -540,20 +540,38 @@ function PayPanel({
   amount,
   currency,
   payerPayment,
+  guestName,
   method,
   setMethod,
-  reference,
-  setReference,
+  payerPhone,
+  setPayerPhone,
+  cardNumber,
+  setCardNumber,
+  cardExpiry,
+  setCardExpiry,
+  cardCvv,
+  setCardCvv,
+  bankRef,
+  setBankRef,
   onPay,
   pending,
 }: {
   amount: number;
   currency: string;
   payerPayment: ExpenseData["payer_payment"];
+  guestName: string;
   method: "mtn_momo" | "airtel_money" | "bank_transfer";
   setMethod: (m: "mtn_momo" | "airtel_money" | "bank_transfer") => void;
-  reference: string;
-  setReference: (s: string) => void;
+  payerPhone: string;
+  setPayerPhone: (s: string) => void;
+  cardNumber: string;
+  setCardNumber: (s: string) => void;
+  cardExpiry: string;
+  setCardExpiry: (s: string) => void;
+  cardCvv: string;
+  setCardCvv: (s: string) => void;
+  bankRef: string;
+  setBankRef: (s: string) => void;
   onPay: () => void;
   pending: boolean;
 }) {
@@ -572,7 +590,7 @@ function PayPanel({
     },
     {
       id: "bank_transfer" as const,
-      label: "Bank transfer",
+      label: "Bank / Card",
       icon: Landmark,
       hint: payerPayment?.bank_account_number ?? null,
     },
@@ -581,27 +599,27 @@ function PayPanel({
   const recipient =
     method === "bank_transfer"
       ? {
-          line1: payerPayment?.bank_name || "Bank not set",
+          line1: payerPayment?.bank_name || "Bank not set by organiser",
           line2: payerPayment?.bank_account_number
             ? `${payerPayment.bank_account_number} · ${payerPayment.bank_account_name ?? ""}`
-            : "Account not provided",
+            : "Use any card — funds route via mock processor",
         }
       : {
           line1:
             payerPayment?.momo_provider === method
               ? payerPayment.momo_name ?? "Recipient"
-              : "Not configured for this method",
+              : "Organiser hasn't set this method",
           line2:
             payerPayment?.momo_provider === method
               ? payerPayment.momo_number ?? ""
-              : "Ask the organiser to set their details",
+              : "Pick another method or notify them",
         };
 
   return (
     <div className="glass-card rounded-2xl p-5 mb-5 space-y-5">
       <div>
         <div className="text-xs uppercase tracking-wider text-muted-foreground">
-          You're paying
+          {guestName ? `${guestName}, you're paying` : "You're paying"}
         </div>
         <div className="font-numeric text-4xl font-semibold mt-1 gradient-text">
           {formatMoney(amount, currency)}
@@ -653,17 +671,85 @@ function PayPanel({
         <div className="font-numeric text-muted-foreground">{recipient.line2}</div>
       </div>
 
-      <div>
-        <label className="text-xs uppercase tracking-wider text-muted-foreground">
-          Transaction reference (optional)
-        </label>
-        <input
-          value={reference}
-          onChange={(e) => setReference(e.target.value)}
-          placeholder="e.g. MoMo confirmation code"
-          className="mt-1 w-full rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary font-numeric"
-        />
-      </div>
+      {/* Method-specific form */}
+      {method !== "bank_transfer" ? (
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs uppercase tracking-wider text-muted-foreground">
+              Your {method === "mtn_momo" ? "MTN" : "Airtel"} number
+            </label>
+            <input
+              value={payerPhone}
+              onChange={(e) => setPayerPhone(e.target.value)}
+              placeholder="e.g. 0772 123 456"
+              inputMode="tel"
+              className="mt-1 w-full rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary font-numeric"
+            />
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              You'll get a pop-up on your phone to approve the transaction.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="rounded-xl border border-border p-4 space-y-3">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">
+              Pay with card
+            </div>
+            <input
+              value={cardNumber}
+              onChange={(e) =>
+                setCardNumber(
+                  e.target.value
+                    .replace(/[^\d]/g, "")
+                    .slice(0, 19)
+                    .replace(/(.{4})/g, "$1 ")
+                    .trim(),
+                )
+              }
+              placeholder="Card number  ·  4242 4242 4242 4242"
+              inputMode="numeric"
+              className="w-full rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary font-numeric"
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                value={cardExpiry}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/[^\d]/g, "").slice(0, 4);
+                  setCardExpiry(v.length > 2 ? `${v.slice(0, 2)}/${v.slice(2)}` : v);
+                }}
+                placeholder="MM/YY"
+                className="rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary font-numeric"
+              />
+              <input
+                value={cardCvv}
+                onChange={(e) => setCardCvv(e.target.value.replace(/[^\d]/g, "").slice(0, 4))}
+                placeholder="CVV"
+                inputMode="numeric"
+                className="rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary font-numeric"
+              />
+            </div>
+          </div>
+          <div className="text-center text-xs text-muted-foreground">
+            — or use your bank app —
+          </div>
+          <div className="rounded-xl border border-border p-4 space-y-2">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">
+              Already transferred from your bank app?
+            </div>
+            <input
+              value={bankRef}
+              onChange={(e) => setBankRef(e.target.value)}
+              placeholder="Paste your transfer reference / FT number"
+              className="w-full rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary font-numeric"
+            />
+            <p className="text-xs text-muted-foreground">
+              Tip: open Stanbic / Centenary / Equity etc., send to the account above, then paste
+              the reference here.
+            </p>
+          </div>
+        </div>
+      )}
 
       <button
         onClick={onPay}
@@ -674,8 +760,54 @@ function PayPanel({
         {pending ? "Processing…" : `Pay ${formatMoney(amount, currency)}`}
       </button>
       <p className="text-xs text-muted-foreground text-center">
-        Mock checkout — no real money moves. Recorded as paid for everyone to see.
+        Mock checkout — no real money moves. The method you choose is saved so the organiser knows
+        how to expect it.
       </p>
+    </div>
+  );
+}
+
+function MomoApprovalModal({
+  phone,
+  amount,
+  currency,
+  method,
+  payeeName,
+}: {
+  phone: string;
+  amount: number;
+  currency: string;
+  method: "mtn_momo" | "airtel_money";
+  payeeName: string;
+}) {
+  const network = method === "mtn_momo" ? "MTN MoMo" : "Airtel Money";
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm grid place-items-center px-4">
+      <div className="w-full max-w-sm rounded-3xl bg-card border border-border p-6 shadow-2xl animate-in fade-in zoom-in-95">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="size-10 rounded-xl bg-primary/15 text-primary grid place-items-center">
+            <Smartphone className="size-5" />
+          </div>
+          <div>
+            <div className="font-semibold">{network} request sent</div>
+            <div className="text-xs text-muted-foreground font-numeric">{phone}</div>
+          </div>
+        </div>
+        <div className="rounded-xl bg-muted/40 border border-border p-4 text-sm space-y-1.5">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Amount</span>
+            <span className="font-numeric font-semibold">{formatMoney(amount, currency)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">To</span>
+            <span className="font-medium truncate ml-3">{payeeName}</span>
+          </div>
+        </div>
+        <div className="mt-5 flex items-center gap-3 text-sm">
+          <Loader2 className="size-4 animate-spin text-primary" />
+          <span>Check your phone and enter your {network} PIN to approve…</span>
+        </div>
+      </div>
     </div>
   );
 }
