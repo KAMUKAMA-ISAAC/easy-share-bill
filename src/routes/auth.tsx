@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { useAuth } from "@/lib/use-auth";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 
 const searchSchema = z.object({
   mode: z.enum(["signin", "signup"]).optional(),
@@ -22,7 +22,10 @@ function AuthPage() {
   const [mode, setMode] = useState<"signin" | "signup">(initialMode ?? "signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -33,6 +36,10 @@ function AuthPage() {
 
   const handleEmail = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mode === "signup" && password !== confirmPassword) {
+      toast.error("Passwords don't match");
+      return;
+    }
     setLoading(true);
     try {
       if (mode === "signup") {
@@ -93,14 +100,14 @@ function AuthPage() {
           <h2 className="font-display text-4xl font-semibold tracking-tight leading-tight mb-4">
             Money should be the
             <br />
-            <span className="gradient-text">least dramatic</span> part of dinner.
+            <span className="gradient-text">least dramatic</span> part of the day.
           </h2>
           <p className="text-muted-foreground">
-            Scan, split, share. Your friends settle with a link — no signup, no friction.
+            Scan, split, share. Friends settle with Mobile Money or bank — no signup, no friction.
           </p>
         </div>
         <div className="relative z-10 text-xs text-muted-foreground">
-          Trusted by groups, trips, and roommates everywhere.
+          Built in Uganda · MTN, Airtel & bank-friendly.
         </div>
       </div>
 
@@ -156,15 +163,25 @@ function AuthPage() {
               placeholder="you@example.com"
               className="w-full rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary transition"
             />
-            <input
-              type="password"
-              required
-              minLength={6}
+            <PasswordField
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={setPassword}
+              show={showPwd}
+              onToggle={() => setShowPwd((s) => !s)}
               placeholder="Password"
-              className="w-full rounded-xl bg-input border border-border px-4 py-2.5 outline-none focus:border-primary transition"
             />
+            {mode === "signup" && (
+              <PasswordField
+                value={confirmPassword}
+                onChange={setConfirmPassword}
+                show={showConfirm}
+                onToggle={() => setShowConfirm((s) => !s)}
+                placeholder="Confirm password"
+                mismatch={
+                  confirmPassword.length > 0 && confirmPassword !== password
+                }
+              />
+            )}
             <button
               type="submit"
               disabled={loading}
@@ -186,6 +203,46 @@ function AuthPage() {
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PasswordField({
+  value,
+  onChange,
+  show,
+  onToggle,
+  placeholder,
+  mismatch,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  show: boolean;
+  onToggle: () => void;
+  placeholder: string;
+  mismatch?: boolean;
+}) {
+  return (
+    <div className="relative">
+      <input
+        type={show ? "text" : "password"}
+        required
+        minLength={6}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`w-full rounded-xl bg-input border px-4 py-2.5 pr-11 outline-none transition ${
+          mismatch ? "border-destructive focus:border-destructive" : "border-border focus:border-primary"
+        }`}
+      />
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label={show ? "Hide password" : "Show password"}
+        className="absolute inset-y-0 right-0 px-3 grid place-items-center text-muted-foreground hover:text-foreground"
+      >
+        {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </button>
     </div>
   );
 }

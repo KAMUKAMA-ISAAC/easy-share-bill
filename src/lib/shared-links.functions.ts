@@ -260,14 +260,15 @@ export const guestPayClaims = createServerFn({ method: "POST" })
     await new Promise((r) => setTimeout(r, 900));
 
     const now = new Date().toISOString();
+    const methodTag = data.reference ? `${data.method}:${data.reference}` : data.method;
     await supabaseAdmin
       .from("item_claims")
-      .update({ paid: true, paid_at: now, payment_method: data.method })
+      .update({ paid: true, paid_at: now, payment_method: methodTag })
       .in(
         "id",
         unpaid.map((c) => c.id),
       );
 
     const total = unpaid.reduce((a, c) => a + Number(c.amount), 0);
-    return { ok: true, total };
+    return { ok: true, total, method: data.method };
   });

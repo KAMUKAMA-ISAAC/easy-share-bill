@@ -65,21 +65,21 @@ export const FEATURES = [
   {
     icon: Sparkles,
     title: "AI receipt scanning",
-    desc: "Snap a photo — items, prices, and tax are extracted in seconds. Edit anything before saving.",
+    desc: "Snap a photo — items and prices are extracted in seconds. Edit anything before saving.",
   },
   {
     icon: Receipt,
-    title: "Flexible splits",
-    desc: "Equal, percentage, custom amounts, or itemized — pick a different method for each expense.",
+    title: "Flexible splits in UGX",
+    desc: "Equal, percentage, custom, or item-by-item — every total stays in Ugandan Shillings.",
   },
   {
     icon: Share2,
-    title: "Guest-friendly links",
-    desc: "Share a secure link via WhatsApp or SMS. Friends pay you back without making an account.",
+    title: "MoMo & bank links",
+    desc: "Share a secure link via WhatsApp. Friends pay on MTN MoMo, Airtel Money, or bank — no account.",
   },
   {
     icon: Users,
     title: "Groups for everything",
-    desc: "Trips, roommates, dinners, campus crews — keep balances tidy across all your circles.",
+    desc: "Trips, hostels, boda crews, office lunches — keep balances tidy across all your circles.",
   },
 ];
