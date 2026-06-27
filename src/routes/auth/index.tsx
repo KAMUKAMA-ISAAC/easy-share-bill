@@ -52,39 +52,19 @@ function AuthPage() {
         });
         if (error) throw error;
         toast.success("Account created — welcome!");
+        // Sign in immediately after signup
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) throw signInError;
+        navigate({ to: "/dashboard" });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Welcome back");
+        navigate({ to: "/dashboard" });
       }
-      navigate({ to: "/dashboard" });
     } catch (err: any) {
       toast.error(err.message || "Authentication failed");
     } finally {
-      setLoading(false);
-    }
-  };
-
-  // ✅ FIXED: Hardcoded Vercel URL for Google redirect
-  const handleGoogle = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: "https://easy-split-ten.vercel.app/auth/callback",
-        },
-      });
-      
-      if (error) {
-        console.error('Google sign-in error:', error);
-        toast.error(error.message || "Google sign-in failed");
-        setLoading(false);
-        return;
-      }
-    } catch (err: any) {
-      console.error('Google sign-in error:', err);
-      toast.error(err.message || "Google sign-in failed");
       setLoading(false);
     }
   };
@@ -135,20 +115,6 @@ function AuthPage() {
               ? "Start splitting in less than a minute."
               : "Sign in to keep splitting."}
           </p>
-
-          <button
-            onClick={handleGoogle}
-            disabled={loading}
-            className="w-full rounded-xl border border-border bg-card hover:bg-muted transition py-2.5 font-medium flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            <GoogleIcon /> Continue with Google
-          </button>
-
-          <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
-            <div className="flex-1 h-px bg-border" />
-            OR
-            <div className="flex-1 h-px bg-border" />
-          </div>
 
           <form onSubmit={handleEmail} className="space-y-3">
             {mode === "signup" && (
@@ -248,16 +214,5 @@ function PasswordField({
         {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
       </button>
     </div>
-  );
-}
-
-function GoogleIcon() {
-  return (
-    <svg className="size-4" viewBox="0 0 24 24">
-      <path
-        fill="#EA4335"
-        d="M12 11v3.2h4.5c-.2 1.2-1.4 3.4-4.5 3.4-2.7 0-4.9-2.2-4.9-5s2.2-5 4.9-5c1.5 0 2.5.6 3.1 1.2l2.1-2.1C15.9 5.4 14.1 4.5 12 4.5 7.9 4.5 4.5 7.9 4.5 12s3.4 7.5 7.5 7.5c4.3 0 7.2-3 7.2-7.3 0-.5 0-.8-.1-1.2H12z"
-      />
-    </svg>
   );
 }
