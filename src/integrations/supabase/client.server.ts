@@ -34,24 +34,46 @@ function createSupabaseAdminClient() {
   
   // 🔑 Try multiple key names - Lovable allows SERVICE_ROLE_KEY (without SUPABASE_ prefix)
   const SUPABASE_SERVICE_ROLE_KEY = 
-    process.env.SERVICE_ROLE_KEY ||           // ✅ Added to Lovable Secrets
+    process.env.SERVICE_ROLE_KEY ||           // Added to Lovable Secrets
     process.env.SUPABASE_SERVICE_ROLE_KEY ||  // Standard name (Vercel only)
     process.env.SB_SERVICE_ROLE_KEY ||        // Alternative
     process.env.LOVABLE_SUPABASE_KEY;         // Another alternative
 
+  console.log('[Supabase Admin] 🔍 Checking environment variables...');
+  console.log('[Supabase Admin] SUPABASE_URL:', SUPABASE_URL ? '✅ Present' : '❌ Missing');
+  console.log('[Supabase Admin] SERVICE_ROLE_KEY:', process.env.SERVICE_ROLE_KEY ? '✅ Present' : '❌ Missing');
+  console.log('[Supabase Admin] SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅ Present' : '❌ Missing');
+  console.log('[Supabase Admin] Using key from:', Object.keys(process.env).find(key => 
+    key === 'SERVICE_ROLE_KEY' || 
+    key === 'SUPABASE_SERVICE_ROLE_KEY' || 
+    key === 'SB_SERVICE_ROLE_KEY' || 
+    key === 'LOVABLE_SUPABASE_KEY'
+  ) || 'unknown');
+
   if (!SUPABASE_URL) {
     const message = `Missing Supabase environment variable: SUPABASE_URL. Connect Supabase in Lovable Cloud.`;
-    console.error(`[Supabase] ${message}`);
+    console.error(`[Supabase Admin] ❌ ${message}`);
     throw new Error(message);
   }
 
   if (!SUPABASE_SERVICE_ROLE_KEY) {
     const message = `Missing service role key. Tried: SERVICE_ROLE_KEY, SUPABASE_SERVICE_ROLE_KEY, SB_SERVICE_ROLE_KEY. Add one to Lovable Secrets or Vercel.`;
-    console.error(`[Supabase] ${message}`);
+    console.error(`[Supabase Admin] ❌ ${message}`);
     throw new Error(message);
   }
 
-  // Log which key source is being used (for debugging)
+  // ✅ Log key format for debugging
+  if (SUPABASE_SERVICE_ROLE_KEY.startsWith('sb_secret_')) {
+    console.log('[Supabase Admin] ✅ Using sb_secret_ key format');
+  } else if (SUPABASE_SERVICE_ROLE_KEY.startsWith('sb_publishable_')) {
+    console.error('[Supabase Admin] ❌ ERROR: Using publishable key instead of secret key!');
+    console.error('[Supabase Admin] ❌ This will not work for admin operations.');
+    console.error('[Supabase Admin] ❌ Please use the sb_secret_ key from Lovable → API → Secret keys.');
+  } else {
+    console.warn('[Supabase Admin] ⚠️ Unknown key format:', SUPABASE_SERVICE_ROLE_KEY.slice(0, 10) + '...');
+  }
+
+  // ✅ Log the key source
   const keySource = Object.keys(process.env).find(key => 
     key === 'SERVICE_ROLE_KEY' || 
     key === 'SUPABASE_SERVICE_ROLE_KEY' || 
