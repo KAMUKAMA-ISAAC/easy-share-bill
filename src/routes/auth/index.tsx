@@ -46,7 +46,7 @@ function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: window.location.origin + "/dashboard",
+            emailRedirectTo: "https://easy-split-ten.vercel.app/dashboard",
             data: { display_name: name || email.split("@")[0] },
           },
         });
@@ -65,14 +65,14 @@ function AuthPage() {
     }
   };
 
-  // ✅ FIXED: Use supabase client directly with Lovable's Supabase
+  // ✅ FIXED: Hardcoded Vercel URL for Google redirect
   const handleGoogle = async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: "https://easy-split-ten.vercel.app/auth/callback",
         },
       });
       
@@ -82,9 +82,6 @@ function AuthPage() {
         setLoading(false);
         return;
       }
-      
-      // User will be redirected to Google, then back to /auth/callback
-      // No need to navigate here
     } catch (err: any) {
       console.error('Google sign-in error:', err);
       toast.error(err.message || "Google sign-in failed");
