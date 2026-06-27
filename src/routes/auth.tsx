@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { useAuth } from "@/lib/use-auth";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
@@ -66,20 +65,28 @@ function AuthPage() {
     }
   };
 
+  // ✅ FIXED: Use supabase client directly with Lovable's Supabase
   const handleGoogle = async () => {
     setLoading(true);
     try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
-      if (result.error) {
-        toast.error("Google sign-in failed");
+      
+      if (error) {
+        console.error('Google sign-in error:', error);
+        toast.error(error.message || "Google sign-in failed");
         setLoading(false);
         return;
       }
-      if (result.redirected) return;
-      navigate({ to: "/dashboard" });
+      
+      // User will be redirected to Google, then back to /auth/callback
+      // No need to navigate here
     } catch (err: any) {
+      console.error('Google sign-in error:', err);
       toast.error(err.message || "Google sign-in failed");
       setLoading(false);
     }
