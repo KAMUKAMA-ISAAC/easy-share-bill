@@ -35,13 +35,28 @@ function GuestShare() {
   const { token } = Route.useParams();
   const qc = useQueryClient();
   const getFn = useServerFn(getSharedExpense);
-  const markFn = useServerFn(guestMarkSplitPaid);
+
+  // ✅ DEBUG: Log the token from the URL
+  console.log(`[Route] 🔍 Token from URL: "${token}"`);
+  console.log(`[Route] 📝 Token length: ${token.length}`);
+  console.log(`[Route] 📝 Token type: ${typeof token}`);
 
   const q = useQuery({
     queryKey: ["share", token],
-    queryFn: () => getFn({ data: { token } }),
+    queryFn: async () => {
+      console.log(`[Route] 📤 Calling getSharedExpense with token: "${token}"`);
+      try {
+        const result = await getFn({ data: { token } });
+        console.log(`[Route] ✅ getSharedExpense succeeded:`, result);
+        return result;
+      } catch (error) {
+        console.error(`[Route] ❌ getSharedExpense failed:`, error);
+        throw error;
+      }
+    },
   });
 
+  const markFn = useServerFn(guestMarkSplitPaid);
   const mark = useMutation({
     mutationFn: (split_id: string) => markFn({ data: { token, split_id } }),
     onSuccess: () => {
@@ -60,6 +75,7 @@ function GuestShare() {
   }
   if (q.error) {
     const msg = (q.error as Error).message || "";
+    console.error(`[Route] ❌ Error rendering:`, msg);
     const isConfig =
       /service role|SUPABASE_URL|missing|env/i.test(msg);
     return (
@@ -84,7 +100,6 @@ function GuestShare() {
       </div>
     );
   }
-
 
   const data = q.data!;
   return (
