@@ -13,7 +13,6 @@ function AuthCallback() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Get the session from the URL
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -23,7 +22,6 @@ function AuthCallback() {
         }
 
         if (data.session) {
-          // Successfully authenticated - redirect to dashboard
           window.location.href = "/dashboard";
         } else {
           setError("No session found");
