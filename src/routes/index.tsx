@@ -77,11 +77,10 @@ function Landing() {
           {/* Floating preview card */}
           <div className="mt-16 lg:mt-24 grid md:grid-cols-3 gap-4 max-w-4xl">
             <StatChip label="Average split">
-              <span className="text-foreground">$24.</span>
-              <span className="text-muted-foreground">17</span>
+              <span className="text-foreground">UGX 24,500</span>
             </StatChip>
             <StatChip label="Settled this week">
-              <span className="text-accent">+$1,284</span>
+              <span className="text-accent">+UGX 1,284,000</span>
             </StatChip>
             <StatChip label="Receipts scanned">
               <span>3,412</span>
@@ -97,8 +96,12 @@ function Landing() {
             How it works
           </div>
           <h2 className="font-display text-3xl md:text-4xl font-semibold tracking-tight">
-            Built for messy real-life money.
+            Built for messy real-life money — Ugandan style.
           </h2>
+          <p className="mt-3 text-muted-foreground">
+            MTN Mobile Money, Airtel Money, and bank transfers — your friends settle the way they
+            already pay.
+          </p>
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
           {FEATURES.map((f) => (
@@ -119,8 +122,8 @@ function Landing() {
               Ready to stop chasing IOUs?
             </h2>
             <p className="text-muted-foreground max-w-lg mx-auto mb-8">
-              Create your first group in 30 seconds. Your friends don't need an account to pay you
-              back.
+              Create your first group in 30 seconds. Friends pay you back on MoMo, Airtel, or
+              bank — no account needed.
             </p>
             <Link
               to="/auth"
@@ -134,9 +137,31 @@ function Landing() {
         </div>
       </section>
 
+      {/* Developer credit */}
+      <section className="mx-auto max-w-7xl px-6 pb-12">
+        <div className="rounded-2xl border border-border/60 bg-card/40 backdrop-blur p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+              Built by
+            </div>
+            <div className="font-display font-semibold text-lg">Kamukama Isaac</div>
+            <a
+              href="mailto:kamukamaisaac497@gmail.com"
+              className="text-sm text-primary hover:underline"
+            >
+              kamukamaisaac497@gmail.com
+            </a>
+          </div>
+          <p className="text-xs text-muted-foreground max-w-sm sm:text-right">
+            Independent developer · Kampala, Uganda. Reach out for feedback, partnerships, or
+            custom builds.
+          </p>
+        </div>
+      </section>
+
       <footer className="border-t border-border/60 mx-auto max-w-7xl px-6 py-8 text-sm text-muted-foreground flex flex-wrap justify-between gap-4">
-        <span>© {new Date().getFullYear()} Splitit</span>
-        <span>Made for friends who hate awkward Venmo asks.</span>
+        <span>© {new Date().getFullYear()} Splitit · Made in Uganda 🇺🇬</span>
+        <span>Mobile Money & bank-friendly bill splitting.</span>
       </footer>
     </div>
   );
