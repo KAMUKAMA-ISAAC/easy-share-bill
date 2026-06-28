@@ -65,7 +65,7 @@ async function loadPayerPaymentInfo(supabaseAdmin: any, expensePayerUserId: stri
 }
 
 export const getSharedExpense = createServerFn({ method: "GET" })
-  .validator((input: unknown) => TokenSchema.parse(input))
+  .inputValidator((input: unknown) => TokenSchema.parse(input))
   .handler(async ({ data }) => {
     console.log(`[Share] 📥 getSharedExpense called with token: ${data.token}`);
     
@@ -182,7 +182,7 @@ const MarkPaidSchema = z.object({
 });
 
 export const guestMarkSplitPaid = createServerFn({ method: "POST" })
-  .validator((input: unknown) => MarkPaidSchema.parse(input))
+  .inputValidator((input: unknown) => MarkPaidSchema.parse(input))
   .handler(async ({ data }) => {
     console.log(`[Share] 💰 guestMarkSplitPaid called for token: ${data.token}`);
     
@@ -228,7 +228,7 @@ const ClaimSchema = z.object({
 
 /** A guest claims one or more items from the shared receipt. */
 export const guestClaimItems = createServerFn({ method: "POST" })
-  .validator((input: unknown) => ClaimSchema.parse(input))
+  .inputValidator((input: unknown) => ClaimSchema.parse(input))
   .handler(async ({ data }) => {
     const { link, supabaseAdmin } = await loadLink(data.token);
     if (link.resource_type !== "expense") throw new Error("Claims only work on expense links");
@@ -303,7 +303,7 @@ const PayClaimsSchema = z.object({
  * No real money moves.
  */
 export const guestPayClaims = createServerFn({ method: "POST" })
-  .validator((input: unknown) => PayClaimsSchema.parse(input))
+  .inputValidator((input: unknown) => PayClaimsSchema.parse(input))
   .handler(async ({ data }) => {
     const { link, supabaseAdmin } = await loadLink(data.token);
     if (link.resource_type !== "expense") throw new Error("Pay only works on expense links");
