@@ -122,19 +122,18 @@ function ExpenseDetail() {
     } catch {}
   };
 
+  const archiveFn = useServerFn(archiveExpense);
+  const restoreFn = useServerFn(restoreExpense);
   const archive = useMutation({
-    mutationFn: () =>
-      useServerFn(archiveExpense)({ data: { expense_id: id } }) as any,
+    mutationFn: () => archiveFn({ data: { expense_id: id } }),
     onSuccess: () => {
       toast.success("Expense archived");
       navigate({ to: "/dashboard" });
     },
     onError: (e: any) => toast.error(e.message),
   });
-
   const restore = useMutation({
-    mutationFn: () =>
-      useServerFn(restoreExpense)({ data: { expense_id: id } }) as any,
+    mutationFn: () => restoreFn({ data: { expense_id: id } }),
     onSuccess: () => {
       toast.success("Expense restored");
       qc.invalidateQueries({ queryKey: ["expense", id] });
