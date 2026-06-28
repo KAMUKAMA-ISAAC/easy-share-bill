@@ -9,13 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as JoinRouteImport } from './routes/join'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthIndexRouteImport } from './routes/auth/index'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
+import { Route as AppWalletRouteImport } from './routes/_app.wallet'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppProfileRouteImport } from './routes/_app.profile'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
+import { Route as AppArchiveRouteImport } from './routes/_app.archive'
 import { Route as AppGroupsIndexRouteImport } from './routes/_app.groups.index'
 import { Route as AppSettingsPaymentsRouteImport } from './routes/_app.settings.payments'
 import { Route as AppGroupsNewRouteImport } from './routes/_app.groups.new'
@@ -23,6 +26,11 @@ import { Route as AppGroupsIdRouteImport } from './routes/_app.groups.$id'
 import { Route as AppExpensesNewRouteImport } from './routes/_app.expenses.new'
 import { Route as AppExpensesIdRouteImport } from './routes/_app.expenses.$id'
 
+const JoinRoute = JoinRouteImport.update({
+  id: '/join',
+  path: '/join',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
@@ -42,6 +50,11 @@ const ShareTokenRoute = ShareTokenRouteImport.update({
   path: '/share/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppWalletRoute = AppWalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -55,6 +68,11 @@ const AppProfileRoute = AppProfileRouteImport.update({
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppArchiveRoute = AppArchiveRouteImport.update({
+  id: '/archive',
+  path: '/archive',
   getParentRoute: () => AppRoute,
 } as any)
 const AppGroupsIndexRoute = AppGroupsIndexRouteImport.update({
@@ -90,9 +108,12 @@ const AppExpensesIdRoute = AppExpensesIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/join': typeof JoinRoute
+  '/archive': typeof AppArchiveRoute
   '/dashboard': typeof AppDashboardRoute
   '/profile': typeof AppProfileRoute
   '/settings': typeof AppSettingsRouteWithChildren
+  '/wallet': typeof AppWalletRoute
   '/share/$token': typeof ShareTokenRoute
   '/auth/': typeof AuthIndexRoute
   '/expenses/$id': typeof AppExpensesIdRoute
@@ -104,9 +125,12 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/join': typeof JoinRoute
+  '/archive': typeof AppArchiveRoute
   '/dashboard': typeof AppDashboardRoute
   '/profile': typeof AppProfileRoute
   '/settings': typeof AppSettingsRouteWithChildren
+  '/wallet': typeof AppWalletRoute
   '/share/$token': typeof ShareTokenRoute
   '/auth': typeof AuthIndexRoute
   '/expenses/$id': typeof AppExpensesIdRoute
@@ -120,9 +144,12 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/join': typeof JoinRoute
+  '/_app/archive': typeof AppArchiveRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/profile': typeof AppProfileRoute
   '/_app/settings': typeof AppSettingsRouteWithChildren
+  '/_app/wallet': typeof AppWalletRoute
   '/share/$token': typeof ShareTokenRoute
   '/auth/': typeof AuthIndexRoute
   '/_app/expenses/$id': typeof AppExpensesIdRoute
@@ -136,9 +163,12 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/join'
+    | '/archive'
     | '/dashboard'
     | '/profile'
     | '/settings'
+    | '/wallet'
     | '/share/$token'
     | '/auth/'
     | '/expenses/$id'
@@ -150,9 +180,12 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/join'
+    | '/archive'
     | '/dashboard'
     | '/profile'
     | '/settings'
+    | '/wallet'
     | '/share/$token'
     | '/auth'
     | '/expenses/$id'
@@ -165,9 +198,12 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
+    | '/join'
+    | '/_app/archive'
     | '/_app/dashboard'
     | '/_app/profile'
     | '/_app/settings'
+    | '/_app/wallet'
     | '/share/$token'
     | '/auth/'
     | '/_app/expenses/$id'
@@ -181,12 +217,20 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  JoinRoute: typeof JoinRoute
   ShareTokenRoute: typeof ShareTokenRoute
   AuthIndexRoute: typeof AuthIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/join': {
+      id: '/join'
+      path: '/join'
+      fullPath: '/join'
+      preLoaderRoute: typeof JoinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app': {
       id: '/_app'
       path: ''
@@ -215,6 +259,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShareTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/wallet': {
+      id: '/_app/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof AppWalletRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/settings': {
       id: '/_app/settings'
       path: '/settings'
@@ -234,6 +285,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/archive': {
+      id: '/_app/archive'
+      path: '/archive'
+      fullPath: '/archive'
+      preLoaderRoute: typeof AppArchiveRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/groups/': {
@@ -294,9 +352,11 @@ const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppArchiveRoute: typeof AppArchiveRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppProfileRoute: typeof AppProfileRoute
   AppSettingsRoute: typeof AppSettingsRouteWithChildren
+  AppWalletRoute: typeof AppWalletRoute
   AppExpensesIdRoute: typeof AppExpensesIdRoute
   AppExpensesNewRoute: typeof AppExpensesNewRoute
   AppGroupsIdRoute: typeof AppGroupsIdRoute
@@ -305,9 +365,11 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppArchiveRoute: AppArchiveRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppProfileRoute: AppProfileRoute,
   AppSettingsRoute: AppSettingsRouteWithChildren,
+  AppWalletRoute: AppWalletRoute,
   AppExpensesIdRoute: AppExpensesIdRoute,
   AppExpensesNewRoute: AppExpensesNewRoute,
   AppGroupsIdRoute: AppGroupsIdRoute,
@@ -320,19 +382,10 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  JoinRoute: JoinRoute,
   ShareTokenRoute: ShareTokenRoute,
   AuthIndexRoute: AuthIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

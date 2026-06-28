@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate, Link, useRouterState } from "@tan
 import { useEffect } from "react";
 import { useAuth } from "@/lib/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Users, Receipt, Plus, LogOut, Loader2, Settings } from "lucide-react";
+import { LayoutDashboard, Users, Receipt, Plus, LogOut, Loader2, Settings, Wallet } from "lucide-react";
 import { initialsOf } from "@/lib/format";
 
 export const Route = createFileRoute("/_app")({
@@ -49,6 +49,7 @@ function AppShell() {
     { to: "/dashboard", icon: LayoutDashboard, label: "Home" },
     { to: "/groups", icon: Users, label: "Groups" },
     { to: "/expenses/new", icon: Plus, label: "New", highlight: true },
+    { to: "/wallet", icon: Wallet, label: "Wallet" },
   ];
 
   return (
@@ -123,7 +124,7 @@ function AppShell() {
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 backdrop-blur-xl bg-background/85 border-t border-border/60">
-        <div className="grid grid-cols-3">
+        <div className="grid grid-cols-4">
           {navItems.map((item) => {
             const active = pathname === item.to || pathname.startsWith(item.to + "/");
             return (

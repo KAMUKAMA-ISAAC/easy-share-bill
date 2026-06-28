@@ -22,6 +22,7 @@ function DashboardPage() {
         .select(
           "id, description, amount, currency, expense_date, category, group_id, paid_by_user_id, paid_by_member_id, splits(id,member_id,amount,paid), groups(name,color)",
         )
+        .is("archived_at", null)
         .order("expense_date", { ascending: false })
         .limit(50);
       if (error) throw error;

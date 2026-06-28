@@ -3,52 +3,26 @@ import { z } from "zod";
 
 /**
  * Public guest access via secure tokens. Uses the admin client because we
- * validate the token ourselves and return only sanitized fields.
+ * validate the token (or 4-digit share code) ourselves and return only
+ * sanitized fields. No login required for guests.
  */
 
 const TokenSchema = z.object({ token: z.string().min(8).max(200) });
 
 async function loadLink(token: string) {
-  console.log(`[Share] 🔍 Looking for token: "${token}"`);
-  console.log(`[Share] 📝 Token length: ${token.length}`);
-  console.log(`[Share] 📝 Token type: ${typeof token}`);
-  
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  
-  console.log(`[Share] 📝 Querying shared_links table...`);
-  
+
   const { data: link, error } = await supabaseAdmin
     .from("shared_links")
     .select("resource_type, resource_id, expires_at")
     .eq("token", token)
     .maybeSingle();
 
-  console.log(`[Share] 📊 Query result:`, { link, error });
-
-  if (error) {
-    console.error(`[Share] ❌ Database error:`, error);
-    throw new Error(`Database error: ${error.message}`);
-  }
-
-  if (!link) {
-    console.error(`[Share] ❌ No link found for token: "${token}"`);
-    
-    // Log all tokens to see what exists
-    const { data: allLinks } = await supabaseAdmin
-      .from("shared_links")
-      .select("token")
-      .limit(5);
-    console.log(`[Share] 📋 Sample tokens in DB:`, allLinks);
-    
-    throw new Error("Link not found or expired");
-  }
-
+  if (error) throw new Error(`Database error: ${error.message}`);
+  if (!link) throw new Error("Link not found or expired");
   if (link.expires_at && new Date(link.expires_at) < new Date()) {
-    console.error(`[Share] ❌ Link expired at: ${link.expires_at}`);
     throw new Error("This link has expired");
   }
-
-  console.log(`[Share] ✅ Found link:`, link);
   return { link, supabaseAdmin };
 }
 
@@ -64,35 +38,41 @@ async function loadPayerPaymentInfo(supabaseAdmin: any, expensePayerUserId: stri
   return data ?? null;
 }
 
-export const getSharedExpense = createServerFn({ method: "GET" })
-  .validator((input: unknown) => TokenSchema.parse(input))
+/** Resolve a 4-digit share code to the canonical share token. */
+const CodeSchema = z.object({ code: z.string().regex(/^\d{4}$/) });
+export const resolveShareCode = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => CodeSchema.parse(input))
   .handler(async ({ data }) => {
-    console.log(`[Share] 📥 getSharedExpense called with token: ${data.token}`);
-    
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: link, error } = await supabaseAdmin
+      .from("shared_links")
+      .select("token, expires_at")
+      .eq("share_code", data.code)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!link) throw new Error("No receipt matches that code");
+    if (link.expires_at && new Date(link.expires_at) < new Date()) {
+      throw new Error("That code has expired");
+    }
+    return { token: link.token as string };
+  });
+
+export const getSharedExpense = createServerFn({ method: "GET" })
+  .inputValidator((input: unknown) => TokenSchema.parse(input))
+  .handler(async ({ data }) => {
     const { link, supabaseAdmin } = await loadLink(data.token);
 
     if (link.resource_type === "expense") {
-      console.log(`[Share] 📄 Loading expense: ${link.resource_id}`);
-      
       const { data: expense, error: expenseError } = await supabaseAdmin
         .from("expenses")
         .select(
-          "id, description, amount, currency, expense_date, split_mode, claim_mode, category, notes, group_id, paid_by_member_id, paid_by_user_id",
+          "id, description, amount, currency, expense_date, split_mode, claim_mode, category, notes, group_id, paid_by_member_id, paid_by_user_id, payout_destination",
         )
         .eq("id", link.resource_id)
         .maybeSingle();
-      
-      if (expenseError) {
-        console.error('[Share] ❌ Expense error:', expenseError);
-        throw new Error(`Expense error: ${expenseError.message}`);
-      }
-      
-      if (!expense) {
-        console.error(`[Share] ❌ Expense not found: ${link.resource_id}`);
-        throw new Error("Expense not found");
-      }
 
-      console.log(`[Share] ✅ Expense found: ${expense.description}`);
+      if (expenseError) throw new Error(`Expense error: ${expenseError.message}`);
+      if (!expense) throw new Error("Expense not found");
 
       const { data: splits } = await supabaseAdmin
         .from("splits")
@@ -119,8 +99,6 @@ export const getSharedExpense = createServerFn({ method: "GET" })
       const payer = members?.find((m) => m.id === expense.paid_by_member_id);
       const payerPayment = await loadPayerPaymentInfo(supabaseAdmin, expense.paid_by_user_id);
 
-      console.log(`[Share] ✅ Returning expense data for: ${expense.description}`);
-      
       return {
         type: "expense" as const,
         expense,
@@ -134,30 +112,20 @@ export const getSharedExpense = createServerFn({ method: "GET" })
     }
 
     // group
-    console.log(`[Share] 📁 Loading group: ${link.resource_id}`);
-    
     const { data: group, error: groupError } = await supabaseAdmin
       .from("groups")
       .select("id, name, description, color")
       .eq("id", link.resource_id)
       .maybeSingle();
-    
-    if (groupError) {
-      console.error('[Share] ❌ Group error:', groupError);
-      throw new Error(`Group error: ${groupError.message}`);
-    }
-    
-    if (!group) {
-      console.error(`[Share] ❌ Group not found: ${link.resource_id}`);
-      throw new Error("Group not found");
-    }
 
-    console.log(`[Share] ✅ Group found: ${group.name}`);
+    if (groupError) throw new Error(`Group error: ${groupError.message}`);
+    if (!group) throw new Error("Group not found");
 
     const { data: expenses } = await supabaseAdmin
       .from("expenses")
       .select("id, description, amount, currency, expense_date, paid_by_member_id")
       .eq("group_id", group.id)
+      .is("archived_at", null)
       .order("expense_date", { ascending: false });
 
     const { data: members } = await supabaseAdmin
@@ -165,8 +133,6 @@ export const getSharedExpense = createServerFn({ method: "GET" })
       .select("id, display_name")
       .eq("group_id", group.id);
 
-    console.log(`[Share] ✅ Returning group data for: ${group.name}`);
-    
     return {
       type: "group" as const,
       group,
@@ -182,10 +148,8 @@ const MarkPaidSchema = z.object({
 });
 
 export const guestMarkSplitPaid = createServerFn({ method: "POST" })
-  .validator((input: unknown) => MarkPaidSchema.parse(input))
+  .inputValidator((input: unknown) => MarkPaidSchema.parse(input))
   .handler(async ({ data }) => {
-    console.log(`[Share] 💰 guestMarkSplitPaid called for token: ${data.token}`);
-    
     const { link, supabaseAdmin } = await loadLink(data.token);
     const { data: split } = await supabaseAdmin
       .from("splits")
@@ -226,9 +190,8 @@ const ClaimSchema = z.object({
   guest_name: z.string().min(1).max(80),
 });
 
-/** A guest claims one or more items from the shared receipt. */
 export const guestClaimItems = createServerFn({ method: "POST" })
-  .validator((input: unknown) => ClaimSchema.parse(input))
+  .inputValidator((input: unknown) => ClaimSchema.parse(input))
   .handler(async ({ data }) => {
     const { link, supabaseAdmin } = await loadLink(data.token);
     if (link.resource_type !== "expense") throw new Error("Claims only work on expense links");
@@ -254,7 +217,6 @@ export const guestClaimItems = createServerFn({ method: "POST" })
     }
 
     if (expense.claim_mode === "first_come") {
-      // Reject if anyone has already claimed any of these items
       const { data: existing } = await supabaseAdmin
         .from("item_claims")
         .select("item_id")
@@ -299,11 +261,11 @@ const PayClaimsSchema = z.object({
 });
 
 /**
- * Mock payment — flips claims to paid and records a payments row.
- * No real money moves.
+ * Mock payment — flips claims to paid and (if the receipt owner chose wallet
+ * payout) credits the owner's in-app wallet.
  */
 export const guestPayClaims = createServerFn({ method: "POST" })
-  .validator((input: unknown) => PayClaimsSchema.parse(input))
+  .inputValidator((input: unknown) => PayClaimsSchema.parse(input))
   .handler(async ({ data }) => {
     const { link, supabaseAdmin } = await loadLink(data.token);
     if (link.resource_type !== "expense") throw new Error("Pay only works on expense links");
@@ -318,9 +280,8 @@ export const guestPayClaims = createServerFn({ method: "POST" })
     }
 
     const unpaid = claims.filter((c) => !c.paid);
-    if (unpaid.length === 0) return { ok: true, total: 0 };
+    if (unpaid.length === 0) return { ok: true, total: 0, method: data.method };
 
-    // Simulate a tiny processing delay
     await new Promise((r) => setTimeout(r, 900));
 
     const now = new Date().toISOString();
@@ -328,11 +289,44 @@ export const guestPayClaims = createServerFn({ method: "POST" })
     await supabaseAdmin
       .from("item_claims")
       .update({ paid: true, paid_at: now, payment_method: methodTag })
-      .in(
-        "id",
-        unpaid.map((c) => c.id),
-      );
+      .in("id", unpaid.map((c) => c.id));
 
     const total = unpaid.reduce((a, c) => a + Number(c.amount), 0);
+
+    // Credit owner's wallet if they chose wallet payout
+    const { data: exp } = await supabaseAdmin
+      .from("expenses")
+      .select("paid_by_user_id, payout_destination, description")
+      .eq("id", link.resource_id)
+      .maybeSingle();
+
+    if (exp && exp.payout_destination === "wallet" && exp.paid_by_user_id) {
+      const { data: wallet } = await supabaseAdmin
+        .from("wallets")
+        .select("balance")
+        .eq("user_id", exp.paid_by_user_id)
+        .maybeSingle();
+      const current = Number(wallet?.balance ?? 0);
+      if (wallet) {
+        await supabaseAdmin
+          .from("wallets")
+          .update({ balance: current + total, updated_at: now })
+          .eq("user_id", exp.paid_by_user_id);
+      } else {
+        await supabaseAdmin
+          .from("wallets")
+          .insert({ user_id: exp.paid_by_user_id, balance: total, currency: "UGX" });
+      }
+      await supabaseAdmin.from("wallet_transactions").insert({
+        user_id: exp.paid_by_user_id,
+        amount: total,
+        kind: "credit",
+        description: `Payment for "${exp.description}"`,
+        reference: methodTag,
+        expense_id: link.resource_id,
+        status: "completed",
+      });
+    }
+
     return { ok: true, total, method: data.method };
   });
