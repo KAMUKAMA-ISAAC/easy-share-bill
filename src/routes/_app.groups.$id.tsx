@@ -1,12 +1,13 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { addGroupMember, createShareLink } from "@/lib/expenses.functions";
+import { useAuth } from "@/lib/use-auth";
+import { addGroupMember, createShareLink, deleteGroup } from "@/lib/expenses.functions";
 import { formatDate, formatMoney, initialsOf } from "@/lib/format";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Receipt, Share2, UserPlus, X } from "lucide-react";
+import { ArrowLeft, Plus, Receipt, Share2, Trash2, UserPlus } from "lucide-react";
 
 export const Route = createFileRoute("/_app/groups/$id")({
   head: () => ({ meta: [{ title: "Group — Splitit" }] }),
@@ -16,6 +17,8 @@ export const Route = createFileRoute("/_app/groups/$id")({
 function GroupDetail() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [showAdd, setShowAdd] = useState(false);
   const [mName, setMName] = useState("");
   const [mEmail, setMEmail] = useState("");
@@ -25,7 +28,7 @@ function GroupDetail() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("groups")
-        .select("id, name, description, color, category, group_members(id, display_name, email, user_id)")
+        .select("id, name, description, color, category, created_by, group_members(id, display_name, email, user_id)")
         .eq("id", id)
         .single();
       if (error) throw error;
@@ -65,14 +68,24 @@ function GroupDetail() {
   const shareFn = useServerFn(createShareLink);
   const handleShare = async () => {
     try {
-      const { token } = await shareFn({ data: { resource_type: "group", resource_id: id } });
+      const { token, share_code } = await shareFn({ data: { resource_type: "group", resource_id: id } });
       const url = `${window.location.origin}/share/${token}`;
       await navigator.clipboard.writeText(url);
-      toast.success("Share link copied!");
+      toast.success(`Share link copied! Code: ${share_code}`);
     } catch (e: any) {
       toast.error(e.message ?? "Failed");
     }
   };
+
+  const deleteFn = useServerFn(deleteGroup);
+  const del = useMutation({
+    mutationFn: () => deleteFn({ data: { group_id: id } }),
+    onSuccess: () => {
+      toast.success("Group deleted");
+      navigate({ to: "/groups" });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Failed"),
+  });
 
   const group = groupQ.data;
   const members = group?.group_members ?? [];
