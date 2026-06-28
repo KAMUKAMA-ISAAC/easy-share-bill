@@ -2,11 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-/**
- * AI receipt parsing with support for both Groq and Lovable AI Gateway.
- * Groq uses the latest Llama 4 Scout vision model.
- */
-
 const ParseSchema = z.object({ storage_path: z.string().min(1) });
 
 const ParsedJsonSchema = z.object({
@@ -32,14 +27,13 @@ export const parseReceipt = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // Get API key - try Groq first, then Lovable
+    // Get API key
     const apiKey = process.env.GROQ_API_KEY || process.env.LOVABLE_API_KEY;
     if (!apiKey) {
       console.error('[Scanner] ❌ No API key found');
       throw new Error("AI gateway not configured - missing API key");
     }
 
-    // Detect which API to use
     const isGroq = apiKey.startsWith('gsk_');
     console.log(`[Scanner] Using API: ${isGroq ? 'Groq' : 'Lovable'}`);
 
@@ -73,22 +67,16 @@ export const parseReceipt = createServerFn({ method: "POST" })
 
     let aiRes: Response;
 
-    // ========================================
-    // GROQ API - UPDATED TO LLAMA 4 SCOUT
-    // ========================================
     if (isGroq) {
-      // ✅ UPDATED: Using the current Groq vision model
-      const groqModel = "meta-llama/llama-4-scout-17b-16e-instruct";
-      console.log(`[Scanner] 🔄 Using Groq API with ${groqModel}...`);
+      console.log('[Scanner] 🔄 Using Groq API with llama-3.2-90b-vision-preview...');
       
-      // Convert image to base64 for Groq
       const imageResponse = await fetch(signed.signedUrl);
       const imageBuffer = await imageResponse.arrayBuffer();
       const base64Image = Buffer.from(imageBuffer).toString('base64');
       const mimeType = imageResponse.headers.get('content-type') || 'image/jpeg';
       
       const groqBody = {
-        model: groqModel,
+        model: "llama-3.2-90b-vision-preview",
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -120,9 +108,6 @@ export const parseReceipt = createServerFn({ method: "POST" })
         body: JSON.stringify(groqBody),
       });
 
-    // ========================================
-    // LOVABLE AI GATEWAY (Fallback)
-    // ========================================
     } else {
       console.log('[Scanner] 🔄 Using Lovable AI Gateway...');
       
@@ -153,9 +138,6 @@ export const parseReceipt = createServerFn({ method: "POST" })
       });
     }
 
-    // ========================================
-    // Handle Response
-    // ========================================
     if (!aiRes.ok) {
       const body = await aiRes.text();
       console.error(`[Scanner] ❌ API error (${aiRes.status}):`, body);
@@ -175,9 +157,6 @@ export const parseReceipt = createServerFn({ method: "POST" })
 
     console.log('[Scanner] ✅ API response received');
 
-    // ========================================
-    // Parse JSON Response
-    // ========================================
     const json = (await aiRes.json()) as {
       choices?: { message?: { content?: string } }[];
     };
@@ -204,8 +183,18 @@ export const parseReceipt = createServerFn({ method: "POST" })
       console.log('[Scanner] Calculated total:', parsed.total);
     }
 
-    // Save to database
-    console.log('[Scanner] 💾 Saving to database...');
+    // ==========================================
+    // ✅ FIX: Allow saving even if totals don't match
+    // ==========================================
+    const itemTotal = parsed.items.reduce((sum, item) => sum + item.price * (item.quantity ?? 1), 0);
+    const difference = Math.abs(itemTotal - parsed.total);
+
+    if (difference > 0.01) {
+      console.warn(`⚠️ Items total (${itemTotal}) differs from receipt total (${parsed.total}) by ${difference}`);
+      // ✅ Allow saving — just log the warning
+    }
+
+    console.log('[Scanner] 💾 Saving receipt to database...');
     const { data: receipt, error } = await supabase
       .from("receipts")
       .insert({
@@ -216,6 +205,9 @@ export const parseReceipt = createServerFn({ method: "POST" })
         tax: parsed.tax ?? null,
         total: parsed.total,
         parsed_data: parsed as any,
+        // ✅ Add a flag to track if receipt is balanced
+        is_balanced: difference <= 0.01,
+        warning_message: difference > 0.01 ? `Items total (${itemTotal}) differs from receipt total (${parsed.total})` : null,
       })
       .select("id")
       .single();
@@ -226,5 +218,10 @@ export const parseReceipt = createServerFn({ method: "POST" })
     }
 
     console.log(`[Scanner] ✅ Receipt saved with ID: ${receipt.id}`);
-    return { receipt_id: receipt.id, ...parsed };
+    return { 
+      receipt_id: receipt.id, 
+      ...parsed,
+      is_balanced: difference <= 0.01,
+      warning: difference > 0.01 ? `Items total (${itemTotal}) differs from receipt total (${parsed.total}) by ${difference.toFixed(2)}` : null
+    };
   });
