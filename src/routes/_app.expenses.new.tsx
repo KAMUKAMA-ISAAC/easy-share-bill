@@ -34,6 +34,7 @@ function NewExpense() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [payerMemberId, setPayerMemberId] = useState<string | null>(null);
   const [claimMode, setClaimMode] = useState<"free" | "first_come" | "preassigned">("free");
+  const [payoutDestination, setPayoutDestination] = useState<"direct" | "wallet">("direct");
   const [receiptId, setReceiptId] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scannedItems, setScannedItems] = useState<ItemInput[] | null>(null);
@@ -138,6 +139,7 @@ function NewExpense() {
           expense_date: date,
           split_mode: splitState.mode,
           claim_mode: claimMode,
+          payout_destination: payoutDestination,
           paid_by_member_id: payerMemberId,
           splits,
           items:
@@ -341,7 +343,39 @@ function NewExpense() {
             </p>
           </div>
         )}
+        <div>
+          <label className="text-xs uppercase tracking-wider text-muted-foreground">
+            When friends pay, money goes to
+          </label>
+          <div className="mt-1 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setPayoutDestination("direct")}
+              className={`p-3 rounded-xl border text-left transition ${
+                payoutDestination === "direct"
+                  ? "border-primary bg-primary/10"
+                  : "border-border hover:border-primary/40"
+              }`}
+            >
+              <div className="text-sm font-medium">Direct</div>
+              <div className="text-xs text-muted-foreground">Pay straight to your MoMo / bank</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPayoutDestination("wallet")}
+              className={`p-3 rounded-xl border text-left transition ${
+                payoutDestination === "wallet"
+                  ? "border-primary bg-primary/10"
+                  : "border-border hover:border-primary/40"
+              }`}
+            >
+              <div className="text-sm font-medium">Splitit wallet</div>
+              <div className="text-xs text-muted-foreground">Collect, then withdraw later</div>
+            </button>
+          </div>
+        </div>
       </div>
+
 
       {/* Split */}
       {selectedGroup && members.length > 0 && amount > 0 && (
