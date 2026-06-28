@@ -10,7 +10,7 @@ const searchSchema = z.object({
   mode: z.enum(["signin", "signup"]).optional(),
 });
 
-export const Route = createFileRoute("/auth")({
+export const Route = createFileRoute("/auth/")({
   head: () => ({ meta: [{ title: "Sign in — Splitit" }] }),
   validateSearch: searchSchema,
   component: AuthPage,
