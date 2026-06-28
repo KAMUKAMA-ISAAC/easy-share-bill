@@ -24,6 +24,7 @@ const CreateExpenseSchema = z.object({
   expense_date: z.string(),
   split_mode: z.enum(["equal", "percentage", "custom", "itemized"]),
   claim_mode: z.enum(["free", "first_come", "preassigned"]).default("free"),
+  payout_destination: z.enum(["direct", "wallet"]).default("direct"),
   paid_by_member_id: z.string().uuid(),
   splits: z.array(SplitSchema).min(1),
   items: z.array(ItemSchema).optional(),
@@ -37,7 +38,6 @@ export const createExpense = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // Validate split sum matches amount (1 cent tolerance)
     const splitSum = data.splits.reduce((a, s) => a + s.amount, 0);
     if (Math.abs(splitSum - data.amount) > 0.01) {
       throw new Error(
@@ -58,6 +58,7 @@ export const createExpense = createServerFn({ method: "POST" })
         expense_date: data.expense_date,
         split_mode: data.split_mode,
         claim_mode: data.claim_mode,
+        payout_destination: data.payout_destination,
         receipt_id: data.receipt_id ?? null,
         notes: data.notes ?? null,
       })
@@ -86,7 +87,7 @@ export const createExpense = createServerFn({ method: "POST" })
         member_id: s.member_id,
         amount: s.amount,
         percentage: s.percentage ?? null,
-        paid: s.member_id === data.paid_by_member_id, // payer is "paid"
+        paid: s.member_id === data.paid_by_member_id,
       })),
     );
     if (splitErr) throw new Error(splitErr.message);
@@ -99,24 +100,67 @@ const CreateLinkSchema = z.object({
   resource_id: z.string().uuid(),
 });
 
+async function generateUniqueShareCode(supabase: any): Promise<string> {
+  for (let i = 0; i < 30; i++) {
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const { data } = await supabase
+      .from("shared_links")
+      .select("id")
+      .eq("share_code", code)
+      .maybeSingle();
+    if (!data) return code;
+  }
+  throw new Error("Could not generate a unique share code, try again");
+}
+
 export const createShareLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => CreateLinkSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+    const token =
+      crypto.randomUUID().replace(/-/g, "") +
+      crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+    const share_code = await generateUniqueShareCode(supabase);
     const { data: link, error } = await supabase
       .from("shared_links")
       .insert({
         token,
+        share_code,
         resource_type: data.resource_type,
         resource_id: data.resource_id,
         created_by: userId,
       })
-      .select("token")
+      .select("token, share_code")
       .single();
     if (error || !link) throw new Error(error?.message ?? "Failed to create link");
-    return { token: link.token };
+    return { token: link.token, share_code: link.share_code as string };
+  });
+
+const ArchiveSchema = z.object({ expense_id: z.string().uuid() });
+
+export const archiveExpense = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => ArchiveSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("expenses")
+      .update({ archived_at: new Date().toISOString() })
+      .eq("id", data.expense_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const restoreExpense = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => ArchiveSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("expenses")
+      .update({ archived_at: null })
+      .eq("id", data.expense_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 const CreateGroupSchema = z.object({
@@ -182,4 +226,16 @@ export const addGroupMember = createServerFn({ method: "POST" })
       .single();
     if (error || !member) throw new Error(error?.message ?? "Failed to add member");
     return member;
+  });
+
+const DeleteGroupSchema = z.object({ group_id: z.string().uuid() });
+
+export const deleteGroup = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => DeleteGroupSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    // RLS already enforces creator-only delete
+    const { error } = await context.supabase.from("groups").delete().eq("id", data.group_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
