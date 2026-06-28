@@ -119,7 +119,7 @@ function GroupDetail() {
               <span className="font-numeric">{formatMoney(totalSpent)}</span> total
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={handleShare}
               className="rounded-xl border border-border px-4 py-2 text-sm inline-flex items-center gap-2 hover:bg-muted transition"
@@ -133,6 +133,18 @@ function GroupDetail() {
             >
               <Plus className="size-4" /> Expense
             </Link>
+            {group.created_by === user?.id && (
+              <button
+                onClick={() => {
+                  if (confirm(`Delete "${group.name}"? This cannot be undone.`)) del.mutate();
+                }}
+                disabled={del.isPending}
+                className="rounded-xl border border-destructive/30 text-destructive px-4 py-2 text-sm inline-flex items-center gap-2 hover:bg-destructive/10 transition disabled:opacity-50"
+                title="Only the group creator can delete"
+              >
+                <Trash2 className="size-4" /> Delete
+              </button>
+            )}
           </div>
         </div>
       )}
