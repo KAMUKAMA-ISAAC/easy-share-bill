@@ -9,9 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthIndexRouteImport } from './routes/auth/index'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppProfileRouteImport } from './routes/_app.profile'
@@ -23,11 +23,6 @@ import { Route as AppGroupsIdRouteImport } from './routes/_app.groups.$id'
 import { Route as AppExpensesNewRouteImport } from './routes/_app.expenses.new'
 import { Route as AppExpensesIdRouteImport } from './routes/_app.expenses.$id'
 
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
@@ -35,6 +30,11 @@ const AppRoute = AppRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthIndexRoute = AuthIndexRouteImport.update({
+  id: '/auth/',
+  path: '/auth/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShareTokenRoute = ShareTokenRouteImport.update({
@@ -90,11 +90,11 @@ const AppExpensesIdRoute = AppExpensesIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRoute
   '/dashboard': typeof AppDashboardRoute
   '/profile': typeof AppProfileRoute
   '/settings': typeof AppSettingsRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
+  '/auth/': typeof AuthIndexRoute
   '/expenses/$id': typeof AppExpensesIdRoute
   '/expenses/new': typeof AppExpensesNewRoute
   '/groups/$id': typeof AppGroupsIdRoute
@@ -104,11 +104,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRoute
   '/dashboard': typeof AppDashboardRoute
   '/profile': typeof AppProfileRoute
   '/settings': typeof AppSettingsRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
+  '/auth': typeof AuthIndexRoute
   '/expenses/$id': typeof AppExpensesIdRoute
   '/expenses/new': typeof AppExpensesNewRoute
   '/groups/$id': typeof AppGroupsIdRoute
@@ -120,11 +120,11 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
-  '/auth': typeof AuthRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/profile': typeof AppProfileRoute
   '/_app/settings': typeof AppSettingsRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
+  '/auth/': typeof AuthIndexRoute
   '/_app/expenses/$id': typeof AppExpensesIdRoute
   '/_app/expenses/new': typeof AppExpensesNewRoute
   '/_app/groups/$id': typeof AppGroupsIdRoute
@@ -136,11 +136,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/auth'
     | '/dashboard'
     | '/profile'
     | '/settings'
     | '/share/$token'
+    | '/auth/'
     | '/expenses/$id'
     | '/expenses/new'
     | '/groups/$id'
@@ -150,11 +150,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/auth'
     | '/dashboard'
     | '/profile'
     | '/settings'
     | '/share/$token'
+    | '/auth'
     | '/expenses/$id'
     | '/expenses/new'
     | '/groups/$id'
@@ -165,11 +165,11 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
-    | '/auth'
     | '/_app/dashboard'
     | '/_app/profile'
     | '/_app/settings'
     | '/share/$token'
+    | '/auth/'
     | '/_app/expenses/$id'
     | '/_app/expenses/new'
     | '/_app/groups/$id'
@@ -181,19 +181,12 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
-  AuthRoute: typeof AuthRoute
   ShareTokenRoute: typeof ShareTokenRoute
+  AuthIndexRoute: typeof AuthIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_app': {
       id: '/_app'
       path: ''
@@ -206,6 +199,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/': {
+      id: '/auth/'
+      path: '/auth'
+      fullPath: '/auth/'
+      preLoaderRoute: typeof AuthIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/share/$token': {
@@ -320,9 +320,19 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
-  AuthRoute: AuthRoute,
   ShareTokenRoute: ShareTokenRoute,
+  AuthIndexRoute: AuthIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
