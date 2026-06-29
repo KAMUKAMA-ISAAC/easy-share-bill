@@ -7,7 +7,7 @@ import { ArrowLeft, User, CreditCard, Bell, Moon, LogOut, ArrowRight, Smartphone
 
 export const Route = createFileRoute("/_app/settings")({
   head: () => ({ meta: [{ title: "Settings — Splitit" }] }),
-  component: PaymentDetailsPage,
+  component: SettingsPage,
 });
 
 function SettingsPage() {
