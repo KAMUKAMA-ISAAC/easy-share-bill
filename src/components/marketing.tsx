@@ -1,139 +1,192 @@
-import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { useState, type ReactNode } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { getExpenseByCode } from "@/lib/receipt-codes.functions";
 import { formatMoney } from "@/lib/format";
-import { Loader2 } from "lucide-react";
+import {
+  ScanLine,
+  SplitSquareHorizontal,
+  Smartphone,
+  Shield,
+  Loader2,
+  ArrowRight,
+} from "lucide-react";
+import logoAsset from "@/assets/splitit-logo.png.asset.json";
 
-export function MarketingPage() {
+export const SplititLogo = ({ className = "size-8" }: { className?: string }) => (
+  <img src={logoAsset.url} alt="Splitit" className={className} />
+);
+
+export function PublicHeader() {
+  return (
+    <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/70 border-b border-border/60">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+        <Link to="/" className="flex items-center gap-2">
+          <SplititLogo className="size-9 rounded-xl" />
+          <div className="hidden sm:block leading-tight">
+            <div className="font-display font-semibold text-lg">Splitit</div>
+            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Scan · Split · Settle
+            </div>
+          </div>
+        </Link>
+        <nav className="flex items-center gap-2">
+          <Link
+            to="/auth"
+            className="text-sm text-muted-foreground hover:text-foreground px-3 py-1.5"
+          >
+            Sign in
+          </Link>
+          <Link
+            to="/auth"
+            search={{ mode: "signup" }}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-primary text-primary-foreground px-4 py-1.5 text-sm font-medium hover:opacity-90 transition"
+          >
+            Get started
+            <ArrowRight className="size-3.5" />
+          </Link>
+        </nav>
+      </div>
+    </header>
+  );
+}
+
+export function StatChip({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="glass-card rounded-2xl p-5">
+      <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="mt-2 font-numeric text-2xl">{children}</div>
+    </div>
+  );
+}
+
+type Feature = { title: string; description: string; icon: React.ComponentType<any> };
+
+export const FEATURES: Feature[] = [
+  {
+    title: "Scan with AI",
+    description: "Snap the receipt — itemised totals, taxes and tips are parsed in seconds.",
+    icon: ScanLine,
+  },
+  {
+    title: "Flexible splits",
+    description: "Equal, percentage, or item-by-item. Change the mode anytime.",
+    icon: SplitSquareHorizontal,
+  },
+  {
+    title: "MoMo & bank",
+    description: "Friends settle with MTN, Airtel or bank transfer — no app, no signup.",
+    icon: Smartphone,
+  },
+  {
+    title: "Private by default",
+    description: "Receipts are private. Sharing needs your 6-character code or QR.",
+    icon: Shield,
+  },
+];
+
+export function FeatureCard({ title, description, icon: Icon }: Feature) {
+  return (
+    <div className="glass-card rounded-2xl p-5">
+      <div className="size-10 rounded-xl bg-primary/15 text-primary grid place-items-center mb-3">
+        <Icon className="size-5" />
+      </div>
+      <div className="font-semibold">{title}</div>
+      <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{description}</p>
+    </div>
+  );
+}
+
+/**
+ * Landing-page receipt lookup. Enter a 6-char code, auto-uppercase,
+ * jump straight into /share/$token. No intermediate join page.
+ */
+export function CodeLookup() {
   const [code, setCode] = useState("");
-  const [expense, setExpense] = useState<any>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const getFn = useServerFn(getExpenseByCode);
+  const navigate = useNavigate();
+  const lookupFn = useServerFn(getExpenseByCode);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (code.length !== 6) return;
-    
     setLoading(true);
     setError("");
-    setExpense(null);
-    
     try {
-      const result = await getFn({ data: { code: code.toUpperCase() } });
-      if (result) {
-        setExpense(result);
+      const result = await lookupFn({ data: { code } });
+      if (!result) {
+        setError("Code not found or expired. Ask the organiser for a new one.");
       } else {
-        setError("Code not found or expired");
+        navigate({ to: "/share/$token", params: { token: result.token } });
       }
     } catch (err: any) {
-      setError(err.message || "Code not found or expired");
+      setError(err?.message ?? "Code not found or expired");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="relative px-4 py-20 lg:py-32 overflow-hidden">
-        <div className="absolute inset-0" style={{ background: "var(--gradient-hero)" }} />
-        <div className="relative z-10 max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm text-white/80 text-sm mb-6">
-            <span className="size-2 rounded-full bg-accent animate-pulse" />
-            Split bills with friends
+    <section className="mx-auto max-w-3xl px-4 sm:px-6 -mt-10 relative z-10">
+      <div className="glass-card rounded-2xl p-6 sm:p-8 shadow-xl">
+        <div className="text-center mb-5">
+          <div className="text-xs uppercase tracking-[0.2em] text-primary font-medium mb-2">
+            Got a code?
           </div>
-          
-          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white">
-            Money should be the
-            <br />
-            <span className="gradient-text">least dramatic</span> part of the day.
-          </h1>
-          
-          <p className="mt-6 text-lg text-white/70 max-w-2xl mx-auto">
-            Scan, split, share. Friends settle with Mobile Money or bank — no signup, no friction.
+          <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight">
+            Access a shared receipt
+          </h2>
+          <p className="text-sm text-muted-foreground mt-2">
+            Enter the 6-character code from your friend — no account needed.
           </p>
-
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              to="/auth"
-              className="inline-flex items-center gap-2 rounded-xl bg-white text-primary px-6 py-3 font-medium hover:opacity-90 transition"
-            >
-              Get Started
-            </Link>
-            <span className="text-white/40 text-sm">or</span>
-            <Link
-              to="/auth"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/20 text-white px-6 py-3 font-medium hover:bg-white/10 transition"
-            >
-              Sign In
-            </Link>
-          </div>
         </div>
-      </section>
 
-      {/* Receipt Lookup Section */}
-      <section className="max-w-4xl mx-auto px-4 py-12 -mt-8">
-        <div className="rounded-2xl bg-card border border-border p-6 shadow-lg">
-          <h2 className="text-xl font-semibold text-center mb-2">View a shared receipt</h2>
-          <p className="text-sm text-muted-foreground text-center mb-6">
-            Enter the 6-digit code from your friend to view their receipt
-          </p>
-          
-          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-            <input
-              type="text"
-              value={code}
-              onChange={(e) => {
-                const val = e.target.value.toUpperCase().replace(/[^A-Z2-9]/g, '');
-                setCode(val.slice(0, 6));
-              }}
-              placeholder="e.g. AB7X92"
-              maxLength={6}
-              className="flex-1 rounded-xl border border-border px-4 py-3 text-center text-2xl font-mono uppercase bg-input focus:border-primary focus:outline-none"
-            />
-            <button
-              type="submit"
-              disabled={loading || code.length !== 6}
-              className="rounded-xl bg-primary text-primary-foreground px-6 py-3 font-medium hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center min-w-[120px]"
-            >
-              {loading ? <Loader2 className="size-5 animate-spin" /> : "View Receipt"}
-            </button>
-          </form>
+        <form onSubmit={submit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+          <input
+            type="text"
+            value={code}
+            onChange={(e) => {
+              const v = e.target.value
+                .toUpperCase()
+                .replace(/[^A-Z0-9]/g, "")
+                .slice(0, 6);
+              setCode(v);
+              if (error) setError("");
+            }}
+            placeholder="ABC123"
+            maxLength={6}
+            inputMode="text"
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
+            className="flex-1 rounded-xl border border-border bg-input px-4 py-3 text-center font-numeric text-2xl tracking-[0.4em] uppercase focus:border-primary focus:outline-none"
+          />
+          <button
+            type="submit"
+            disabled={loading || code.length !== 6}
+            className="rounded-xl bg-primary text-primary-foreground px-6 py-3 font-medium hover:opacity-90 transition disabled:opacity-50 inline-flex items-center justify-center min-w-[140px]"
+          >
+            {loading ? (
+              <Loader2 className="size-5 animate-spin" />
+            ) : (
+              <>
+                Open receipt
+                <ArrowRight className="size-4 ml-1.5" />
+              </>
+            )}
+          </button>
+        </form>
 
-          {error && (
-            <p className="text-destructive text-sm text-center mt-4">{error}</p>
-          )}
+        {error && <p className="text-destructive text-sm text-center mt-4">{error}</p>}
 
-          {expense && (
-            <div className="mt-6 p-6 rounded-xl border border-border bg-muted/30">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="text-lg font-semibold">{expense.description}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {expense.merchant || "Receipt"} • {new Date(expense.expense_date).toLocaleDateString()}
-                  </p>
-                </div>
-                <div className="text-2xl font-bold font-numeric">
-                  {formatMoney(expense.total, expense.currency || "UGX")}
-                </div>
-              </div>
-              
-              {expense.items && expense.items.length > 0 && (
-                <div className="mt-4 space-y-2 border-t border-border pt-4">
-                  {expense.items.map((item: any) => (
-                    <div key={item.id} className="flex justify-between text-sm">
-                      <span>{item.name} {item.quantity > 1 && `×${item.quantity}`}</span>
-                      <span className="font-numeric">{formatMoney(item.price * (item.quantity || 1), expense.currency || "UGX")}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </section>
-    </div>
+        <p className="text-xs text-muted-foreground text-center mt-4">
+          Codes expire 5 minutes after they're generated.
+        </p>
+      </div>
+    </section>
   );
 }
+
+/** Back-compat alias for any old imports. */
+export const MarketingPage = CodeLookup;

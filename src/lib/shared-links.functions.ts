@@ -38,8 +38,14 @@ async function loadPayerPaymentInfo(supabaseAdmin: any, expensePayerUserId: stri
   return data ?? null;
 }
 
-/** Resolve a 4-digit share code to the canonical share token. */
-const CodeSchema = z.object({ code: z.string().regex(/^\d{4}$/) });
+/** Resolve a 6-character share code to the canonical share token. */
+const CodeSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z0-9]{6}$/, "Code must be 6 characters"),
+});
 export const resolveShareCode = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => CodeSchema.parse(input))
   .handler(async ({ data }) => {

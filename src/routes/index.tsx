@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { FEATURES, FeatureCard, PublicHeader, StatChip } from "@/components/marketing";
+import { CodeLookup, FEATURES, FeatureCard, PublicHeader, StatChip } from "@/components/marketing";
 import { ArrowRight, Check } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -88,6 +88,8 @@ function Landing() {
           </div>
         </div>
       </section>
+
+      <CodeLookup />
 
       {/* Features */}
       <section className="mx-auto max-w-7xl px-6 py-24">
