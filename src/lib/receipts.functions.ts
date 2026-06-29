@@ -32,6 +32,10 @@ export const parseReceipt = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
+    // ✅ DEBUG: Log the storage path
+    console.log('[Scanner] 📁 Received storage_path:', data.storage_path);
+    console.log('[Scanner] 📁 User ID:', userId);
+
     // Get API key - try Groq first, then Lovable
     const apiKey = process.env.GROQ_API_KEY || process.env.LOVABLE_API_KEY;
     if (!apiKey) {
@@ -43,13 +47,30 @@ export const parseReceipt = createServerFn({ method: "POST" })
     const isGroq = apiKey.startsWith('gsk_');
     console.log(`[Scanner] Using API: ${isGroq ? 'Groq' : 'Lovable'}`);
 
+    // ✅ DEBUG: Check if the file exists before creating signed URL
+    console.log('[Scanner] 🔍 Checking if file exists...');
+    const { data: fileExists, error: fileCheckError } = await supabase.storage
+      .from("receipts")
+      .list('', {
+        limit: 100,
+        offset: 0,
+      });
+    
+    if (fileCheckError) {
+      console.error('[Scanner] ❌ Error listing files:', fileCheckError);
+    } else {
+      console.log('[Scanner] 📁 Files in receipts bucket:', fileExists?.map(f => f.name));
+    }
+
     // Signed URL for the receipt image
+    console.log('[Scanner] 🔗 Creating signed URL for:', data.storage_path);
     const { data: signed, error: signErr } = await supabase.storage
       .from("receipts")
       .createSignedUrl(data.storage_path, 60 * 10);
       
     if (signErr || !signed?.signedUrl) {
       console.error('[Scanner] ❌ Signed URL error:', signErr);
+      console.error('[Scanner] ❌ Path that failed:', data.storage_path);
       throw new Error(signErr?.message ?? "Could not load receipt image");
     }
     console.log('[Scanner] ✅ Signed URL created');
@@ -82,10 +103,12 @@ export const parseReceipt = createServerFn({ method: "POST" })
       console.log(`[Scanner] 🔄 Using Groq API with ${groqModel}...`);
       
       // Convert image to base64 for Groq
+      console.log('[Scanner] 📥 Fetching image from signed URL...');
       const imageResponse = await fetch(signed.signedUrl);
       const imageBuffer = await imageResponse.arrayBuffer();
       const base64Image = Buffer.from(imageBuffer).toString('base64');
       const mimeType = imageResponse.headers.get('content-type') || 'image/jpeg';
+      console.log('[Scanner] 📥 Image loaded, size:', imageBuffer.byteLength, 'bytes');
       
       const groqBody = {
         model: groqModel,
