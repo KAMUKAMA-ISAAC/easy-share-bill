@@ -101,8 +101,50 @@
   --shadow-glow: 0 0 60px -10px oklch(0.55 0.2 255 / 0.45);
 }
 
+/* ✅ FIXED: Dark mode */
 .dark {
-  color-scheme: light;
+  color-scheme: dark;
+  
+  --background: oklch(0.08 0.03 255);
+  --foreground: oklch(0.95 0.02 250);
+  
+  --surface: oklch(0.12 0.03 255);
+  --surface-elevated: oklch(0.15 0.035 255);
+  
+  --card: oklch(0.12 0.03 255);
+  --card-foreground: oklch(0.95 0.02 250);
+  
+  --popover: oklch(0.12 0.03 255);
+  --popover-foreground: oklch(0.95 0.02 250);
+  
+  --primary: oklch(0.6 0.2 255);
+  --primary-foreground: oklch(0.99 0.003 250);
+  
+  --secondary: oklch(0.18 0.03 255);
+  --secondary-foreground: oklch(0.9 0.02 250);
+  
+  --muted: oklch(0.18 0.03 255);
+  --muted-foreground: oklch(0.55 0.03 255);
+  
+  --accent: oklch(0.25 0.04 255);
+  --accent-foreground: oklch(0.9 0.02 250);
+  
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.99 0.003 0);
+  
+  --success: oklch(0.5 0.17 165);
+  --success-foreground: oklch(0.99 0.003 0);
+  
+  --border: oklch(0.22 0.03 255);
+  --border-strong: oklch(0.3 0.03 255);
+  --input: oklch(0.15 0.03 255);
+  --ring: oklch(0.6 0.2 255);
+  
+  --gradient-card: linear-gradient(180deg, oklch(0.15 0.035 255), oklch(0.08 0.03 255));
+  --shadow-sm: 0 1px 2px 0 oklch(0 0 0 / 0.3);
+  --shadow-md: 0 4px 16px -2px oklch(0 0 0 / 0.4);
+  --shadow-lg: 0 12px 40px -8px oklch(0 0 0 / 0.5);
+  --shadow-glow: 0 0 60px -10px oklch(0.55 0.2 255 / 0.35);
 }
 
 @layer base {
@@ -159,5 +201,22 @@
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+  }
+
+  /* ✅ Safe area support for mobile */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  @supports (padding: max(0px)) {
+    .safe-area-bottom {
+      padding-bottom: max(env(safe-area-inset-bottom, 0px), 0px);
+    }
+  }
+
+  /* ✅ Mobile nav touch improvements */
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 }
