@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as JoinRouteImport } from './routes/join'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthIndexRouteImport } from './routes/auth/index'
@@ -26,11 +25,6 @@ import { Route as AppGroupsIdRouteImport } from './routes/_app.groups.$id'
 import { Route as AppExpensesNewRouteImport } from './routes/_app.expenses.new'
 import { Route as AppExpensesIdRouteImport } from './routes/_app.expenses.$id'
 
-const JoinRoute = JoinRouteImport.update({
-  id: '/join',
-  path: '/join',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
@@ -108,7 +102,6 @@ const AppExpensesIdRoute = AppExpensesIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/join': typeof JoinRoute
   '/archive': typeof AppArchiveRoute
   '/dashboard': typeof AppDashboardRoute
   '/profile': typeof AppProfileRoute
@@ -125,7 +118,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/join': typeof JoinRoute
   '/archive': typeof AppArchiveRoute
   '/dashboard': typeof AppDashboardRoute
   '/profile': typeof AppProfileRoute
@@ -144,7 +136,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
-  '/join': typeof JoinRoute
   '/_app/archive': typeof AppArchiveRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/profile': typeof AppProfileRoute
@@ -163,7 +154,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/join'
     | '/archive'
     | '/dashboard'
     | '/profile'
@@ -180,7 +170,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/join'
     | '/archive'
     | '/dashboard'
     | '/profile'
@@ -198,7 +187,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
-    | '/join'
     | '/_app/archive'
     | '/_app/dashboard'
     | '/_app/profile'
@@ -217,20 +205,12 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
-  JoinRoute: typeof JoinRoute
   ShareTokenRoute: typeof ShareTokenRoute
   AuthIndexRoute: typeof AuthIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/join': {
-      id: '/join'
-      path: '/join'
-      fullPath: '/join'
-      preLoaderRoute: typeof JoinRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_app': {
       id: '/_app'
       path: ''
@@ -382,7 +362,6 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
-  JoinRoute: JoinRoute,
   ShareTokenRoute: ShareTokenRoute,
   AuthIndexRoute: AuthIndexRoute,
 }

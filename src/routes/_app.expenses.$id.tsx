@@ -307,11 +307,11 @@ function ExpenseDetail() {
               <div className="text-xs uppercase tracking-wider text-muted-foreground inline-flex items-center gap-1.5">
                 <Hash className="size-3" /> Share code
               </div>
-              <div className="font-numeric text-4xl font-semibold tracking-[0.3em] mt-1.5">
+              <div className="font-numeric text-3xl sm:text-4xl font-semibold tracking-[0.25em] mt-1.5">
                 {share.code}
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                Friends type this at <span className="font-medium">/join</span>
+                Friends enter this on the Splitit homepage. Expires in 5 minutes.
               </p>
             </div>
 
@@ -364,7 +364,7 @@ function ExpenseDetail() {
               </a>
               <a
                 href={`mailto:?subject=Splitit&body=${encodeURIComponent(
-                  `${share.url}\n\nOr enter code ${share.code} at /join`,
+                  `${share.url}\n\nOr enter code ${share.code} on the Splitit homepage.`,
                 )}`}
                 className="rounded-xl border border-border py-2 text-sm flex items-center justify-center gap-1.5 hover:bg-muted transition"
               >
