@@ -137,33 +137,36 @@ function AppShell() {
         <Outlet />
       </main>
 
-  {/* Mobile bottom nav - Symmetrical */}
-<nav className="md:hidden fixed bottom-0 inset-x-0 z-40 backdrop-blur-xl bg-background/85 border-t border-border/60 safe-area-bottom">
-  <div className="grid grid-cols-4 max-w-md mx-auto">
-    {navItems.map((item) => {
-      const active = pathname === item.to || pathname.startsWith(item.to + "/");
-      return (
-        <Link
-          key={item.to}
-          to={item.to}
-          className={`flex flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-medium transition touch-manipulation ${
-            active ? "text-primary" : "text-muted-foreground"
-          }`}
-        >
-          {item.highlight ? (
-            <div className={`size-12 rounded-full bg-primary text-primary-foreground grid place-items-center shadow-lg shadow-primary/30 transition-transform active:scale-95 ${
-              active ? "ring-2 ring-primary/20 ring-offset-2 ring-offset-background" : ""
-            }`}>
-              <Plus className="size-6" strokeWidth={3} />
-            </div>
-          ) : (
-            <div className="size-12 flex items-center justify-center">
-              <item.icon className="size-6" strokeWidth={2} />
-            </div>
-          )}
-          <span className="text-[10px] font-medium">{item.label}</span>
-        </Link>
-      );
-    })}
-  </div>
-</nav>
+      {/* ✅ OPTION 1: Symmetrical with consistent sizing */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 backdrop-blur-xl bg-background/85 border-t border-border/60 safe-area-bottom">
+        <div className="grid grid-cols-4 max-w-md mx-auto">
+          {navItems.map((item) => {
+            const active = pathname === item.to || pathname.startsWith(item.to + "/");
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={`flex flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-medium transition touch-manipulation ${
+                  active ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                {item.highlight ? (
+                  <div className={`size-12 rounded-full bg-primary text-primary-foreground grid place-items-center shadow-lg shadow-primary/30 transition-transform active:scale-95 ${
+                    active ? "ring-2 ring-primary/20 ring-offset-2 ring-offset-background" : ""
+                  }`}>
+                    <Plus className="size-6" strokeWidth={3} />
+                  </div>
+                ) : (
+                  <div className="size-12 flex items-center justify-center">
+                    <item.icon className="size-6" strokeWidth={2} />
+                  </div>
+                )}
+                <span className="text-[10px] font-medium">{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+    </div>
+  );
+}
