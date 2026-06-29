@@ -31,7 +31,6 @@ function AppShell() {
     } catch {}
   }, []);
 
-
   if (loading || !user) {
     return (
       <div className="min-h-screen grid place-items-center">
@@ -59,7 +58,8 @@ function AppShell() {
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/70 border-b border-border/60">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           <Link to="/dashboard" className="flex items-center gap-2">
-            <img src={logoAsset.url} alt="Splitit" className="size-9 rounded-xl" />
+            {/* ✅ FIXED: Removed .url */}
+            <img src={logoAsset} alt="Splitit" className="size-9 rounded-xl" />
             <span className="font-display font-semibold text-lg hidden sm:inline">Splitit</span>
           </Link>
 
