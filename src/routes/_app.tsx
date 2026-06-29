@@ -120,7 +120,7 @@ function AppShell() {
         <Outlet />
       </main>
 
-      {/* Mobile bottom nav - Optimized */}
+  {/* Mobile bottom nav - Optimized */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 backdrop-blur-xl bg-background/85 border-t border-border/60 safe-area-bottom">
         <div className="grid grid-cols-4 max-w-md mx-auto">
           {navItems.map((item) => {
@@ -133,21 +133,16 @@ function AppShell() {
                   active ? "text-primary" : "text-muted-foreground"
                 }`}
               >
-              {item.highlight ? (
-  <div className={`size-12 rounded-full bg-primary text-primary-foreground grid place-items-center shadow-lg shadow-primary/30 transition-transform active:scale-95 ${
-    active ? "ring-2 ring-primary/20 ring-offset-2 ring-offset-background" : ""
-  }`}>
-    <Plus className="size-6" strokeWidth={3} />
-  </div>
-) : (
-  <item.icon className="size-5" strokeWidth={2} />
-)}
+                {item.highlight ? (
+                  <div className="size-10 rounded-full bg-primary grid place-items-center text-primary-foreground shadow-lg shadow-primary/30">
+
+                    <item.icon className="size-5" />
+                  </div>
+                ) : (
+                  <item.icon className="size-5" />
+                )}
                 <span className="text-[10px] font-medium">{item.label}</span>
               </Link>
             );
           })}
         </div>
-      </nav>
-    </div>
-  );
-}
