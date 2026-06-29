@@ -73,7 +73,7 @@ function ExpenseDetail() {
       const { token, share_code } = await shareFn({
         data: { resource_type: "expense", resource_id: id },
       });
-      const url = `${window.location.origin}/share/${token}`;
+      const url = `${window.location.origin}/?code=${share_code}`;
       setShare({ url, code: share_code });
       try {
         await navigator.clipboard.writeText(url);

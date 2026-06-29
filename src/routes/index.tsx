@@ -1,6 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { z } from "zod";
 import { CodeLookup, FEATURES, FeatureCard, PublicHeader, StatChip } from "@/components/marketing";
 import { ArrowRight, Check } from "lucide-react";
+
+const indexSearchSchema = z.object({
+  // Friends who scan the QR land here with ?code=ABC123 prefilled.
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z0-9]{6}$/)
+    .optional()
+    .catch(undefined),
+});
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -18,10 +30,12 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
+  validateSearch: indexSearchSchema,
   component: Landing,
 });
 
 function Landing() {
+  const { code } = Route.useSearch();
   return (
     <div className="min-h-screen">
       <PublicHeader />
@@ -89,7 +103,7 @@ function Landing() {
         </div>
       </section>
 
-      <CodeLookup />
+      <CodeLookup initialCode={code} />
 
       {/* Features */}
       <section className="mx-auto max-w-7xl px-6 py-24">

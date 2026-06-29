@@ -32,10 +32,6 @@ export const parseReceipt = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // ✅ DEBUG: Log the storage path
-    console.log('[Scanner] 📁 Received storage_path:', data.storage_path);
-    console.log('[Scanner] 📁 User ID:', userId);
-
     // Get API key - try Groq first, then Lovable
     const apiKey = process.env.GROQ_API_KEY || process.env.LOVABLE_API_KEY;
     if (!apiKey) {
@@ -45,35 +41,18 @@ export const parseReceipt = createServerFn({ method: "POST" })
 
     // Detect which API to use
     const isGroq = apiKey.startsWith('gsk_');
-    console.log(`[Scanner] Using API: ${isGroq ? 'Groq' : 'Lovable'}`);
+    console.log(`[Scanner] Parsing receipt for user ${userId} via ${isGroq ? 'Groq' : 'Lovable'} — path: ${data.storage_path}`);
 
-    // ✅ DEBUG: Check if the file exists before creating signed URL
-    console.log('[Scanner] 🔍 Checking if file exists...');
-    const { data: fileExists, error: fileCheckError } = await supabase.storage
-      .from("receipts")
-      .list('', {
-        limit: 100,
-        offset: 0,
-      });
-    
-    if (fileCheckError) {
-      console.error('[Scanner] ❌ Error listing files:', fileCheckError);
-    } else {
-      console.log('[Scanner] 📁 Files in receipts bucket:', fileExists?.map(f => f.name));
-    }
-
-    // Signed URL for the receipt image
-    console.log('[Scanner] 🔗 Creating signed URL for:', data.storage_path);
+    // Signed URL for the receipt image (RLS requires the user's JWT on the
+    // server-side client — provided by requireSupabaseAuth middleware).
     const { data: signed, error: signErr } = await supabase.storage
       .from("receipts")
       .createSignedUrl(data.storage_path, 60 * 10);
-      
+
     if (signErr || !signed?.signedUrl) {
       console.error('[Scanner] ❌ Signed URL error:', signErr);
-      console.error('[Scanner] ❌ Path that failed:', data.storage_path);
       throw new Error(signErr?.message ?? "Could not load receipt image");
     }
-    console.log('[Scanner] ✅ Signed URL created');
 
     const systemPrompt =
       "You are a receipt OCR engine. Read the receipt photo and return ONLY a JSON object matching this schema (no prose, no markdown):\n" +

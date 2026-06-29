@@ -157,7 +157,9 @@ function NewExpense() {
     },
     onSuccess: (res) => {
       toast.success("Expense saved");
-      navigate({ to: "/expenses/$id", params: { id: res.id } });
+      // Go straight to the dedicated share page so the user immediately
+      // sees the auto-generated 6-character code + QR (per product spec).
+      navigate({ to: "/expenses/$id/share", params: { id: res.id } });
     },
     onError: (e: any) => toast.error(e.message ?? "Failed"),
   });

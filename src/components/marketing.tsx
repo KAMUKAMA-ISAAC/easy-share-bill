@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { getExpenseByCode } from "@/lib/receipt-codes.functions";
@@ -99,13 +99,25 @@ export function FeatureCard({ title, description, icon: Icon }: Feature) {
 /**
  * Landing-page receipt lookup. Enter a 6-char code, auto-uppercase,
  * jump straight into /share/$token. No intermediate join page.
+ * When `initialCode` is provided (e.g. from a scanned QR landing on /?code=ABC123),
+ * the field is pre-filled and ready — the user just presses Enter (or taps Open).
  */
-export function CodeLookup() {
-  const [code, setCode] = useState("");
+export function CodeLookup({ initialCode }: { initialCode?: string } = {}) {
+  const [code, setCode] = useState(initialCode?.toUpperCase().slice(0, 6) ?? "");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const inputRef = useRef<HTMLInputElement>(null);
   const lookupFn = useServerFn(getExpenseByCode);
+
+  // When a QR-scanned code lands on the page, pre-fill the input and focus it
+  // so the only thing the user has to do is press Enter.
+  useEffect(() => {
+    if (!initialCode) return;
+    const clean = initialCode.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+    setCode(clean);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, [initialCode]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,6 +155,7 @@ export function CodeLookup() {
 
         <form onSubmit={submit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
           <input
+            ref={inputRef}
             type="text"
             value={code}
             onChange={(e) => {
@@ -159,11 +172,13 @@ export function CodeLookup() {
             autoCapitalize="characters"
             autoCorrect="off"
             spellCheck={false}
+            data-testid="landing-code-input"
             className="flex-1 rounded-xl border border-border bg-input px-4 py-3 text-center font-numeric text-2xl tracking-[0.4em] uppercase focus:border-primary focus:outline-none"
           />
           <button
             type="submit"
             disabled={loading || code.length !== 6}
+            data-testid="landing-code-submit-btn"
             className="rounded-xl bg-primary text-primary-foreground px-6 py-3 font-medium hover:opacity-90 transition disabled:opacity-50 inline-flex items-center justify-center min-w-[140px]"
           >
             {loading ? (
