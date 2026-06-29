@@ -97,14 +97,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "AI receipt scanning, flexible splits, and guest-friendly payment codes. Made in Uganda.",
       },
       { property: "og:type", content: "website" },
-      { property: "og:image", content: logoAsset.url },
+      // ✅ FIXED: Removed .url from all these
+      { property: "og:image", content: logoAsset },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:image", content: logoAsset.url },
+      { name: "twitter:image", content: logoAsset },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", type: "image/png", href: logoAsset.url },
-      { rel: "apple-touch-icon", href: logoAsset.url },
+      // ✅ FIXED: Removed .url from these too
+      { rel: "icon", type: "image/png", href: logoAsset },
+      { rel: "apple-touch-icon", href: logoAsset },
     ],
   }),
   shellComponent: RootShell,
