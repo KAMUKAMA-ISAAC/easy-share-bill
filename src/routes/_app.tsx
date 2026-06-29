@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { LayoutDashboard, Users, Plus, LogOut, Loader2, Settings, Wallet } from "lucide-react";
 import { initialsOf } from "@/lib/format";
 import logoAsset from "@/assets/split-logo.png";
+import { ThemeToggle } from "@/components/ThemeToggle"; // ✅ ADDED: Import ThemeToggle
 
 export const Route = createFileRoute("/_app")({
   component: AppShell,
@@ -86,7 +87,10 @@ function AppShell() {
             })}
           </nav>
 
+          {/* ✅ UPDATED: Added ThemeToggle to the right side */}
           <div className="flex items-center gap-2">
+            <ThemeToggle />
+            
             <Link
               to="/settings"
               className="size-9 grid place-items-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition"
