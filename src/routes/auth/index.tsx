@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/use-auth";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
+import logoAsset from "@/assets/split-logo.png"; // ✅ ADDED: Import the logo
 
 const searchSchema = z.object({
   mode: z.enum(["signin", "signup"]).optional(),
@@ -73,9 +74,12 @@ function AuthPage() {
       <div className="hidden lg:flex relative p-12 flex-col justify-between overflow-hidden">
         <div className="absolute inset-0" style={{ background: "var(--gradient-hero)" }} />
         <Link to="/" className="relative flex items-center gap-2 z-10">
-          <div className="size-9 rounded-xl bg-gradient-to-br from-primary to-accent grid place-items-center font-display font-bold text-primary-foreground">
-            S
-          </div>
+          {/* ✅ FIXED: Changed from "S" to actual logo */}
+          <img 
+            src={logoAsset} 
+            alt="Splitit" 
+            className="size-9 rounded-xl object-contain"
+          />
           <span className="font-display font-semibold text-xl">Splitit</span>
         </Link>
         <div className="relative z-10 max-w-md">
@@ -97,9 +101,12 @@ function AuthPage() {
         <div className="w-full max-w-sm">
           <div className="lg:hidden mb-8">
             <Link to="/" className="flex items-center gap-2">
-              <div className="size-8 rounded-xl bg-gradient-to-br from-primary to-accent grid place-items-center font-display font-bold text-primary-foreground">
-                S
-              </div>
+              {/* ✅ FIXED: Changed from "S" to actual logo (mobile) */}
+              <img 
+                src={logoAsset} 
+                alt="Splitit" 
+                className="size-8 rounded-xl object-contain"
+              />
               <span className="font-display font-semibold text-lg">Splitit</span>
             </Link>
           </div>
