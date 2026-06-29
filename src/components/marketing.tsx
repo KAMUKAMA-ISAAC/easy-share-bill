@@ -14,9 +14,8 @@ import {
 import logoAsset from "@/assets/split-logo.png";
 
 export const SplititLogo = ({ className = "size-8" }: { className?: string }) => (
-  <img src={logoAsset.url} alt="Splitit" className={className} />
+  <img src={logoAsset} alt="Splitit" className={className} />
 );
-
 export function PublicHeader() {
   return (
     <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/70 border-b border-border/60">
