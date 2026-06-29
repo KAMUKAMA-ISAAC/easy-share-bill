@@ -68,7 +68,8 @@ export const parseReceipt = createServerFn({ method: "POST" })
     let aiRes: Response;
 
     if (isGroq) {
-      console.log('[Scanner] 🔄 Using Groq API with llama-3.2-90b-vision-preview...');
+      // ✅ UPDATED: Using the current Groq vision model
+      console.log('[Scanner] 🔄 Using Groq API with meta-llama/llama-4-scout-17b-16e-instruct...');
       
       const imageResponse = await fetch(signed.signedUrl);
       const imageBuffer = await imageResponse.arrayBuffer();
@@ -76,7 +77,7 @@ export const parseReceipt = createServerFn({ method: "POST" })
       const mimeType = imageResponse.headers.get('content-type') || 'image/jpeg';
       
       const groqBody = {
-        model: "llama-3.2-90b-vision-preview",
+        model: "meta-llama/llama-4-scout-17b-16e-instruct",
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -183,15 +184,12 @@ export const parseReceipt = createServerFn({ method: "POST" })
       console.log('[Scanner] Calculated total:', parsed.total);
     }
 
-    // ==========================================
-    // ✅ FIX: Allow saving even if totals don't match
-    // ==========================================
+    // Allow saving even if totals don't match
     const itemTotal = parsed.items.reduce((sum, item) => sum + item.price * (item.quantity ?? 1), 0);
     const difference = Math.abs(itemTotal - parsed.total);
 
     if (difference > 0.01) {
       console.warn(`⚠️ Items total (${itemTotal}) differs from receipt total (${parsed.total}) by ${difference}`);
-      // ✅ Allow saving — just log the warning
     }
 
     console.log('[Scanner] 💾 Saving receipt to database...');
@@ -205,7 +203,6 @@ export const parseReceipt = createServerFn({ method: "POST" })
         tax: parsed.tax ?? null,
         total: parsed.total,
         parsed_data: parsed as any,
-        // ✅ Add a flag to track if receipt is balanced
         is_balanced: difference <= 0.01,
         warning_message: difference > 0.01 ? `Items total (${itemTotal}) differs from receipt total (${parsed.total})` : null,
       })
