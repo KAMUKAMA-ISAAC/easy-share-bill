@@ -117,9 +117,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <head>
         <HeadContent />
+        {/* Set the theme before React hydrates to avoid a flash of light
+            content for users who picked dark mode, and vice-versa. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var p=JSON.parse(localStorage.getItem('splitit:prefs')||'{}');var t=p.theme||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);}catch(e){document.documentElement.classList.add('dark');}})();`,
+          }}
+        />
       </head>
       <body>
         {children}
@@ -131,6 +138,30 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  // Keep the <html class="dark"> in sync with the saved theme on every
+  // route — including landing, share, and auth pages where the app shell
+  // doesn't mount.
+  useEffect(() => {
+    const apply = () => {
+      try {
+        const prefs = JSON.parse(localStorage.getItem("splitit:prefs") || "{}");
+        const t = (prefs.theme as string) || "system";
+        const dark =
+          t === "dark" ||
+          (t === "system" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.classList.toggle("dark", dark);
+      } catch {
+        document.documentElement.classList.add("dark");
+      }
+    };
+    apply();
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />

@@ -15,7 +15,10 @@ function GroupsList() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("groups")
-        .select("id, name, description, color, category, created_at, group_members(id)")
+        .select(
+          "id, name, description, color, category, created_at, archived_at, group_members(id)",
+        )
+        .is("archived_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];

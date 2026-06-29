@@ -64,6 +64,8 @@ function createUserSupabase(userJWT: string) {
       persistSession: false,
       autoRefreshToken: false,
     },
+    // ws polyfill — see client.server.ts for the full explanation.
+    realtime: { transport: WebSocket as unknown as typeof globalThis.WebSocket },
   });
 }
 

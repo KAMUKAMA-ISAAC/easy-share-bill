@@ -267,12 +267,77 @@ export const addGroupMember = createServerFn({ method: "POST" })
 
 const DeleteGroupSchema = z.object({ group_id: z.string().uuid() });
 
+/**
+ * Soft-delete a group: hides it from the dashboard / groups list but keeps
+ * the row so the owner can restore it or wipe it for good from the Archive
+ * page. RLS already restricts updates to the creator.
+ */
 export const deleteGroup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => DeleteGroupSchema.parse(input))
   .handler(async ({ data, context }) => {
-    // RLS already enforces creator-only delete
-    const { error } = await context.supabase.from("groups").delete().eq("id", data.group_id);
+    const { error } = await context.supabase
+      .from("groups")
+      .update({ archived_at: new Date().toISOString() })
+      .eq("id", data.group_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const restoreGroup = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => DeleteGroupSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("groups")
+      .update({ archived_at: null })
+      .eq("id", data.group_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/**
+ * Permanent delete — removes the group and (via FK cascade) all members,
+ * expenses, splits, items, claims, etc. There is no undo. Only the creator
+ * can do this (enforced by RLS `groups_delete_creator`).
+ */
+export const permanentlyDeleteGroup = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => DeleteGroupSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("groups")
+      .delete()
+      .eq("id", data.group_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+const PermDeleteExpenseSchema = z.object({ expense_id: z.string().uuid() });
+
+/**
+ * Permanent expense delete — only allowed on already-archived expenses,
+ * so users can't bypass the soft-delete safety net by accident. The
+ * Archive page surfaces this action.
+ */
+export const permanentlyDeleteExpense = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => PermDeleteExpenseSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: row } = await supabase
+      .from("expenses")
+      .select("id, archived_at, paid_by_user_id")
+      .eq("id", data.expense_id)
+      .maybeSingle();
+    if (!row) throw new Error("Expense not found");
+    if (row.paid_by_user_id !== userId) {
+      throw new Error("Only the expense creator can delete this");
+    }
+    if (!row.archived_at) {
+      throw new Error("Archive the expense first, then delete permanently");
+    }
+    const { error } = await supabase.from("expenses").delete().eq("id", data.expense_id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
