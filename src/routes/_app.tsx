@@ -5,13 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { LayoutDashboard, Users, Plus, LogOut, Loader2, Settings, Wallet } from "lucide-react";
 import { initialsOf } from "@/lib/format";
 import logoAsset from "@/assets/split-logo.png";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const Route = createFileRoute("/_app")({
   component: AppShell,
 });
 
 function AppShell() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -40,10 +41,13 @@ function AppShell() {
   }
 
   const name =
-    (user.user_metadata?.display_name as string) ||
-    (user.user_metadata?.full_name as string) ||
+    profile?.display_name ||
+    user.user_metadata?.display_name ||
+    user.user_metadata?.full_name ||
     user.email?.split("@")[0] ||
     "You";
+
+  const avatarUrl = profile?.avatar_url;
 
   const navItems = [
     { to: "/dashboard", icon: LayoutDashboard, label: "Home" },
@@ -87,6 +91,8 @@ function AppShell() {
           </nav>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle />
+            
             <Link
               to="/settings"
               className="size-9 grid place-items-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition"
@@ -97,11 +103,22 @@ function AppShell() {
 
             <Link
               to="/profile"
-              className="size-9 rounded-full bg-gradient-to-br from-primary/40 to-accent/40 grid place-items-center text-sm font-medium hover:opacity-90 transition"
+              className="hover:opacity-90 transition"
               title="Profile"
             >
-              {initialsOf(name)}
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={name}
+                  className="size-9 rounded-full object-cover"
+                />
+              ) : (
+                <div className="size-9 rounded-full bg-gradient-to-br from-primary/40 to-accent/40 grid place-items-center text-sm font-medium">
+                  {initialsOf(name)}
+                </div>
+              )}
             </Link>
+            
             <button
               onClick={async () => {
                 await supabase.auth.signOut();
@@ -120,7 +137,7 @@ function AppShell() {
         <Outlet />
       </main>
 
-  {/* Mobile bottom nav - Optimized */}
+      {/* Mobile bottom nav - Optimized */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 backdrop-blur-xl bg-background/85 border-t border-border/60 safe-area-bottom">
         <div className="grid grid-cols-4 max-w-md mx-auto">
           {navItems.map((item) => {
@@ -135,14 +152,17 @@ function AppShell() {
               >
                 {item.highlight ? (
                   <div className="size-10 rounded-full bg-primary grid place-items-center text-primary-foreground shadow-lg shadow-primary/30">
-
-                    <item.icon className="size-5" />
+                    <Plus className="size-5" strokeWidth={3} />
                   </div>
                 ) : (
-                  <item.icon className="size-5" />
+                  <item.icon className="size-5" strokeWidth={2} />
                 )}
                 <span className="text-[10px] font-medium">{item.label}</span>
               </Link>
             );
           })}
         </div>
+      </nav> {/* ← THIS WAS MISSING! */}
+    </div>
+  );
+}
