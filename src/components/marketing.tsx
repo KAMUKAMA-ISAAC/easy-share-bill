@@ -11,7 +11,7 @@ import {
   Loader2,
   ArrowRight,
 } from "lucide-react";
-import logoAsset from "@/assets/splitit-logo.png.asset.json";
+import logoAsset from "@/assets/split-logo.png";
 
 export const SplititLogo = ({ className = "size-8" }: { className?: string }) => (
   <img src={logoAsset.url} alt="Splitit" className={className} />
