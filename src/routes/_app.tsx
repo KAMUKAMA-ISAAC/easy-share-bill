@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { LayoutDashboard, Users, Receipt, Plus, LogOut, Loader2, Settings, Wallet } from "lucide-react";
 import { initialsOf } from "@/lib/format";
-import logoAsset from "@/assets/splitit-logo.png.asset.json";
+import logoAsset from "@/assets/split-logo.png";
 
 export const Route = createFileRoute("/_app")({
   component: AppShell,
