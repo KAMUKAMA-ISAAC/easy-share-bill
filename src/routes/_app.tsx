@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate, Link, useRouterState } from "@tan
 import { useEffect } from "react";
 import { useAuth } from "@/lib/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Users, Receipt, Plus, LogOut, Loader2, Settings, Wallet } from "lucide-react";
+import { LayoutDashboard, Users, Plus, LogOut, Loader2, Settings, Wallet } from "lucide-react";
 import { initialsOf } from "@/lib/format";
 import logoAsset from "@/assets/split-logo.png";
 
@@ -53,12 +53,11 @@ function AppShell() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       {/* Top header (desktop) */}
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/70 border-b border-border/60">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           <Link to="/dashboard" className="flex items-center gap-2">
-            {/* ✅ FIXED: Removed .url */}
             <img src={logoAsset} alt="Splitit" className="size-9 rounded-xl" />
             <span className="font-display font-semibold text-lg hidden sm:inline">Splitit</span>
           </Link>
@@ -121,27 +120,27 @@ function AppShell() {
         <Outlet />
       </main>
 
-      {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 backdrop-blur-xl bg-background/85 border-t border-border/60">
-        <div className="grid grid-cols-4">
+      {/* Mobile bottom nav - Optimized */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 backdrop-blur-xl bg-background/85 border-t border-border/60 safe-area-bottom">
+        <div className="grid grid-cols-4 max-w-md mx-auto">
           {navItems.map((item) => {
             const active = pathname === item.to || pathname.startsWith(item.to + "/");
             return (
               <Link
                 key={item.to}
                 to={item.to}
-                className={`flex flex-col items-center gap-1 py-3 text-xs transition ${
+                className={`flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition touch-manipulation ${
                   active ? "text-primary" : "text-muted-foreground"
                 }`}
               >
                 {item.highlight ? (
-                  <div className="size-9 -mt-1 rounded-full bg-primary grid place-items-center text-primary-foreground">
+                  <div className="size-10 -mt-3 rounded-full bg-primary grid place-items-center text-primary-foreground shadow-lg shadow-primary/30">
                     <item.icon className="size-5" />
                   </div>
                 ) : (
                   <item.icon className="size-5" />
                 )}
-                {item.label}
+                <span className="text-[10px] font-medium">{item.label}</span>
               </Link>
             );
           })}
