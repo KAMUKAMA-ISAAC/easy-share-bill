@@ -133,12 +133,14 @@ function AppShell() {
                   active ? "text-primary" : "text-muted-foreground"
                 }`}
               >
-               {item.highlight ? (
-  <div className="size-10 -mt-3 rounded-full bg-primary grid place-items-center text-primary-foreground shadow-lg shadow-primary/30">
-    <item.icon className="size-5" />
+              {item.highlight ? (
+  <div className={`size-12 rounded-full bg-primary text-primary-foreground grid place-items-center shadow-lg shadow-primary/30 transition-transform active:scale-95 ${
+    active ? "ring-2 ring-primary/20 ring-offset-2 ring-offset-background" : ""
+  }`}>
+    <Plus className="size-6" strokeWidth={3} />
   </div>
 ) : (
-  <item.icon className="size-5" />
+  <item.icon className="size-5" strokeWidth={2} />
 )}
                 <span className="text-[10px] font-medium">{item.label}</span>
               </Link>
