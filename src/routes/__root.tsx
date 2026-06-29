@@ -20,6 +20,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
+import logoAsset from "@/assets/splitit-logo.png.asset.json";
 
 function NotFoundComponent() {
   return (
@@ -82,22 +83,29 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Splitit — Smart expense splitting" },
+      { title: "Splitit — Scan. Split. Settle." },
       {
         name: "description",
         content:
-          "Scan receipts, split bills, and share payment links. No account needed for friends to pay you back.",
+          "Scan receipts, split bills, and share secure 6-digit codes. Friends pay you on MoMo, Airtel, or bank — no account needed.",
       },
-      { name: "theme-color", content: "#0A0A0B" },
-      { property: "og:title", content: "Splitit — Smart expense splitting" },
+      { name: "theme-color", content: "#1e6bff" },
+      { property: "og:title", content: "Splitit — Scan. Split. Settle." },
       {
         property: "og:description",
-        content: "AI receipt scanning, flexible splits, and guest-friendly payment links.",
+        content:
+          "AI receipt scanning, flexible splits, and guest-friendly payment codes. Made in Uganda.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:image", content: logoAsset.url },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: logoAsset.url },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", type: "image/png", href: logoAsset.url },
+      { rel: "apple-touch-icon", href: logoAsset.url },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,

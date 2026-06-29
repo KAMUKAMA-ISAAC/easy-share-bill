@@ -100,15 +100,36 @@ const CreateLinkSchema = z.object({
   resource_id: z.string().uuid(),
 });
 
+// 6-char uppercase, no ambiguous chars (no 0/O/1/I).
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const CODE_LEN = 6;
+const CODE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function randomShareCode(): string {
+  let out = "";
+  const bytes = new Uint8Array(CODE_LEN);
+  crypto.getRandomValues(bytes);
+  for (let i = 0; i < CODE_LEN; i++) {
+    out += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
+  }
+  return out;
+}
+
 async function generateUniqueShareCode(supabase: any): Promise<string> {
   for (let i = 0; i < 30; i++) {
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const code = randomShareCode();
+    // Only collide with codes that are still active.
     const { data } = await supabase
       .from("shared_links")
-      .select("id")
+      .select("id, expires_at")
       .eq("share_code", code)
       .maybeSingle();
     if (!data) return code;
+    if (data.expires_at && new Date(data.expires_at) < new Date()) {
+      // Free up the expired code by clearing it so we can reuse the slot.
+      await supabase.from("shared_links").update({ share_code: null }).eq("id", data.id);
+      return code;
+    }
   }
   throw new Error("Could not generate a unique share code, try again");
 }
@@ -118,10 +139,21 @@ export const createShareLink = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => CreateLinkSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+
+    // Invalidate any existing active codes for this resource — each share
+    // generates a fresh code per spec.
+    await supabase
+      .from("shared_links")
+      .update({ share_code: null, expires_at: new Date(Date.now() - 1000).toISOString() })
+      .eq("resource_type", data.resource_type)
+      .eq("resource_id", data.resource_id)
+      .eq("created_by", userId);
+
     const token =
       crypto.randomUUID().replace(/-/g, "") +
       crypto.randomUUID().replace(/-/g, "").slice(0, 8);
     const share_code = await generateUniqueShareCode(supabase);
+    const expires_at = new Date(Date.now() + CODE_TTL_MS).toISOString();
     const { data: link, error } = await supabase
       .from("shared_links")
       .insert({
@@ -130,11 +162,16 @@ export const createShareLink = createServerFn({ method: "POST" })
         resource_type: data.resource_type,
         resource_id: data.resource_id,
         created_by: userId,
+        expires_at,
       })
-      .select("token, share_code")
+      .select("token, share_code, expires_at")
       .single();
     if (error || !link) throw new Error(error?.message ?? "Failed to create link");
-    return { token: link.token, share_code: link.share_code as string };
+    return {
+      token: link.token,
+      share_code: link.share_code as string,
+      expires_at: link.expires_at as string,
+    };
   });
 
 const ArchiveSchema = z.object({ expense_id: z.string().uuid() });

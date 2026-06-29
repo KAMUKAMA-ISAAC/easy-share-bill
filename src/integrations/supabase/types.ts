@@ -389,6 +389,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_balanced: boolean | null
           merchant: string | null
           parsed_data: Json | null
           storage_path: string
@@ -396,10 +397,12 @@ export type Database = {
           tax: number | null
           total: number | null
           user_id: string
+          warning_message: string | null
         }
         Insert: {
           created_at?: string
           id?: string
+          is_balanced?: boolean | null
           merchant?: string | null
           parsed_data?: Json | null
           storage_path: string
@@ -407,10 +410,12 @@ export type Database = {
           tax?: number | null
           total?: number | null
           user_id: string
+          warning_message?: string | null
         }
         Update: {
           created_at?: string
           id?: string
+          is_balanced?: boolean | null
           merchant?: string | null
           parsed_data?: Json | null
           storage_path?: string
@@ -418,6 +423,7 @@ export type Database = {
           tax?: number | null
           total?: number | null
           user_id?: string
+          warning_message?: string | null
         }
         Relationships: []
       }

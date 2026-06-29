@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { LayoutDashboard, Users, Receipt, Plus, LogOut, Loader2, Settings, Wallet } from "lucide-react";
 import { initialsOf } from "@/lib/format";
+import logoAsset from "@/assets/splitit-logo.png.asset.json";
 
 export const Route = createFileRoute("/_app")({
   component: AppShell,
@@ -58,9 +59,7 @@ function AppShell() {
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/70 border-b border-border/60">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           <Link to="/dashboard" className="flex items-center gap-2">
-            <div className="size-8 rounded-xl bg-gradient-to-br from-primary to-accent grid place-items-center font-display font-bold text-primary-foreground">
-              S
-            </div>
+            <img src={logoAsset.url} alt="Splitit" className="size-9 rounded-xl" />
             <span className="font-display font-semibold text-lg hidden sm:inline">Splitit</span>
           </Link>
 
