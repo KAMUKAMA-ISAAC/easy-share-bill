@@ -12,10 +12,12 @@ import {
   ArrowRight,
 } from "lucide-react";
 import logoAsset from "@/assets/split-logo.png";
+import { ThemeToggle } from "./ThemeToggle"; // ✅ ADDED: Import ThemeToggle
 
 export const SplititLogo = ({ className = "size-8" }: { className?: string }) => (
   <img src={logoAsset} alt="Splitit" className={className} />
 );
+
 export function PublicHeader() {
   return (
     <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/70 border-b border-border/60">
@@ -29,7 +31,11 @@ export function PublicHeader() {
             </div>
           </div>
         </Link>
-        <nav className="flex items-center gap-2">
+        
+        {/* ✅ UPDATED: Changed from <nav> to <div> and added ThemeToggle */}
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          
           <Link
             to="/auth"
             className="text-sm text-muted-foreground hover:text-foreground px-3 py-1.5"
@@ -44,7 +50,7 @@ export function PublicHeader() {
             Get started
             <ArrowRight className="size-3.5" />
           </Link>
-        </nav>
+        </div>
       </div>
     </header>
   );
