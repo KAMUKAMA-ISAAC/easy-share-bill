@@ -2,51 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 /**
- * Public guest access via secure tokens. Uses the admin client because we
- * validate the token (or 4-digit share code) ourselves and return only
- * sanitized fields. No login required for guests.
+ * Public guest access via secure tokens.
+ * Uses RPC functions (SECURITY DEFINER) instead of service role.
+ * No login required for guests.
  */
 
 const TokenSchema = z.object({ token: z.string().min(8).max(200) });
-
-async function loadLink(token: string) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-  const { data: link, error } = await supabaseAdmin
-    .from("shared_links")
-    .select("resource_type, resource_id, expires_at")
-    .eq("token", token)
-    .maybeSingle();
-
-  if (error) throw new Error(`Database error: ${error.message}`);
-  if (!link) throw new Error("Link not found or expired");
-  if (link.expires_at && new Date(link.expires_at) < new Date()) {
-    throw new Error("This link has expired");
-  }
-  return { link, supabaseAdmin };
-}
-
-async function loadPayerPaymentInfo(supabaseAdmin: any, expensePayerUserId: string | null) {
-  if (!expensePayerUserId) return null;
-  // Fetch display name from profiles + payment methods (display-safe fields only)
-  const [{ data: profile }, { data: methods }] = await Promise.all([
-    supabaseAdmin
-      .from("profiles")
-      .select("display_name")
-      .eq("id", expensePayerUserId)
-      .maybeSingle(),
-    supabaseAdmin
-      .from("payment_methods")
-      .select("id, kind, label, display_hint, account_name, bank_name, is_default")
-      .eq("user_id", expensePayerUserId)
-      .order("is_default", { ascending: false }),
-  ]);
-  if (!profile && !methods) return null;
-  return {
-    display_name: profile?.display_name ?? null,
-    payment_methods: methods ?? [],
-  };
-}
 
 /** Resolve a 6-character share code to the canonical share token. */
 const CodeSchema = z.object({
@@ -56,105 +17,40 @@ const CodeSchema = z.object({
     .toUpperCase()
     .regex(/^[A-Z0-9]{6}$/, "Code must be 6 characters"),
 });
+
 export const resolveShareCode = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => CodeSchema.parse(input))
+  .validator((input: unknown) => CodeSchema.parse(input))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: link, error } = await supabaseAdmin
-      .from("shared_links")
-      .select("token, expires_at")
-      .eq("share_code", data.code)
-      .maybeSingle();
+    // ✅ Use RPC instead of supabaseAdmin
+    const { supabase } = await import("@/integrations/supabase/client");
+    
+    const { data: link, error } = await supabase
+      .rpc('resolve_share_code', { p_code: data.code });
+    
     if (error) throw new Error(error.message);
     if (!link) throw new Error("No receipt matches that code");
-    if (link.expires_at && new Date(link.expires_at) < new Date()) {
-      throw new Error("That code has expired");
-    }
-    return { token: link.token as string };
+    return { token: link as string };
   });
 
 export const getSharedExpense = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => TokenSchema.parse(input))
+  .validator((input: unknown) => TokenSchema.parse(input))
   .handler(async ({ data }) => {
-    const { link, supabaseAdmin } = await loadLink(data.token);
-
-    if (link.resource_type === "expense") {
-      const { data: expense, error: expenseError } = await supabaseAdmin
-        .from("expenses")
-        .select(
-          "id, description, amount, currency, expense_date, split_mode, claim_mode, category, notes, group_id, paid_by_member_id, paid_by_user_id, payout_destination",
-        )
-        .eq("id", link.resource_id)
-        .maybeSingle();
-
-      if (expenseError) throw new Error(`Expense error: ${expenseError.message}`);
-      if (!expense) throw new Error("Expense not found");
-
-      const { data: splits } = await supabaseAdmin
-        .from("splits")
-        .select("id, member_id, amount, paid, paid_at")
-        .eq("expense_id", expense.id);
-
-      const memberIds = (splits ?? []).map((s) => s.member_id);
-      const { data: members } = await supabaseAdmin
-        .from("group_members")
-        .select("id, display_name")
-        .in("id", memberIds.length ? memberIds : ["00000000-0000-0000-0000-000000000000"]);
-
-      const { data: items } = await supabaseAdmin
-        .from("expense_items")
-        .select("id, name, price, quantity, locked, assigned_member_ids, sort_order")
-        .eq("expense_id", expense.id)
-        .order("sort_order", { ascending: true });
-
-      const { data: claims } = await supabaseAdmin
-        .from("item_claims")
-        .select("id, item_id, guest_name, quantity, amount, paid, paid_at, payment_method")
-        .eq("expense_id", expense.id);
-
-      const payer = members?.find((m) => m.id === expense.paid_by_member_id);
-      const payerPayment = await loadPayerPaymentInfo(supabaseAdmin, expense.paid_by_user_id);
-
-      return {
-        type: "expense" as const,
-        expense,
-        splits: splits ?? [],
-        members: members ?? [],
-        items: items ?? [],
-        claims: claims ?? [],
-        payer_name: payer?.display_name ?? "Someone",
-        payer_payment: payerPayment,
-      };
+    // ✅ Use RPC instead of supabaseAdmin
+    const { supabase } = await import("@/integrations/supabase/client");
+    
+    const { data: result, error } = await supabase
+      .rpc('get_shared_expense_by_token', { p_token: data.token });
+    
+    if (error) {
+      console.error('[Share] ❌ RPC error:', error);
+      throw new Error('Link not found or expired');
     }
-
-    // group
-    const { data: group, error: groupError } = await supabaseAdmin
-      .from("groups")
-      .select("id, name, description, color")
-      .eq("id", link.resource_id)
-      .maybeSingle();
-
-    if (groupError) throw new Error(`Group error: ${groupError.message}`);
-    if (!group) throw new Error("Group not found");
-
-    const { data: expenses } = await supabaseAdmin
-      .from("expenses")
-      .select("id, description, amount, currency, expense_date, paid_by_member_id")
-      .eq("group_id", group.id)
-      .is("archived_at", null)
-      .order("expense_date", { ascending: false });
-
-    const { data: members } = await supabaseAdmin
-      .from("group_members")
-      .select("id, display_name")
-      .eq("group_id", group.id);
-
-    return {
-      type: "group" as const,
-      group,
-      expenses: expenses ?? [],
-      members: members ?? [],
-    };
+    
+    if (!result) {
+      throw new Error('Link not found or expired');
+    }
+    
+    return result;
   });
 
 const MarkPaidSchema = z.object({
@@ -164,40 +60,24 @@ const MarkPaidSchema = z.object({
 });
 
 export const guestMarkSplitPaid = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => MarkPaidSchema.parse(input))
+  .validator((input: unknown) => MarkPaidSchema.parse(input))
   .handler(async ({ data }) => {
-    const { link, supabaseAdmin } = await loadLink(data.token);
-    const { data: split } = await supabaseAdmin
-      .from("splits")
-      .select("id, amount, expense_id, paid")
-      .eq("id", data.split_id)
-      .maybeSingle();
-    if (!split) throw new Error("Split not found");
-
-    if (link.resource_type === "expense" && split.expense_id !== link.resource_id) {
-      throw new Error("Split does not belong to this link");
+    // ✅ Use RPC instead of supabaseAdmin
+    const { supabase } = await import("@/integrations/supabase/client");
+    
+    const { data: result, error } = await supabase
+      .rpc('mark_split_paid_guest', {
+        p_token: data.token,
+        p_split_id: data.split_id,
+        p_guest_name: data.guest_name || null
+      });
+    
+    if (error) {
+      console.error('[Share] ❌ RPC error:', error);
+      throw new Error(error.message);
     }
-    if (link.resource_type === "group") {
-      const { data: exp } = await supabaseAdmin
-        .from("expenses")
-        .select("group_id")
-        .eq("id", split.expense_id)
-        .maybeSingle();
-      if (!exp || exp.group_id !== link.resource_id) {
-        throw new Error("Split does not belong to this group");
-      }
-    }
-
-    if (split.paid) return { ok: true, alreadyPaid: true };
-    const now = new Date().toISOString();
-    await supabaseAdmin.from("splits").update({ paid: true, paid_at: now }).eq("id", split.id);
-    await supabaseAdmin.from("payments").insert({
-      split_id: split.id,
-      amount: split.amount,
-      method: "guest_link",
-      marked_by_token: data.token,
-    });
-    return { ok: true, alreadyPaid: false };
+    
+    return result;
   });
 
 const ClaimSchema = z.object({
@@ -207,66 +87,24 @@ const ClaimSchema = z.object({
 });
 
 export const guestClaimItems = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => ClaimSchema.parse(input))
+  .validator((input: unknown) => ClaimSchema.parse(input))
   .handler(async ({ data }) => {
-    const { link, supabaseAdmin } = await loadLink(data.token);
-    if (link.resource_type !== "expense") throw new Error("Claims only work on expense links");
-
-    const { data: expense } = await supabaseAdmin
-      .from("expenses")
-      .select("id, claim_mode")
-      .eq("id", link.resource_id)
-      .maybeSingle();
-    if (!expense) throw new Error("Expense not found");
-    if (expense.claim_mode === "preassigned") {
-      throw new Error("This bill was pre-assigned by the organiser");
+    // ✅ Use RPC instead of supabaseAdmin
+    const { supabase } = await import("@/integrations/supabase/client");
+    
+    const { data: result, error } = await supabase
+      .rpc('claim_items_guest', {
+        p_token: data.token,
+        p_item_ids: data.item_ids,
+        p_guest_name: data.guest_name
+      });
+    
+    if (error) {
+      console.error('[Share] ❌ RPC error:', error);
+      throw new Error(error.message);
     }
-
-    const { data: items } = await supabaseAdmin
-      .from("expense_items")
-      .select("id, name, price, quantity, locked")
-      .eq("expense_id", expense.id)
-      .in("id", data.item_ids);
-
-    if (!items || items.length !== data.item_ids.length) {
-      throw new Error("Some items are no longer available");
-    }
-
-    if (expense.claim_mode === "first_come") {
-      const { data: existing } = await supabaseAdmin
-        .from("item_claims")
-        .select("item_id")
-        .in("item_id", data.item_ids);
-      if (existing && existing.length > 0) {
-        throw new Error("Someone already grabbed one of those items — refresh and pick again");
-      }
-    }
-
-    const rows = items.map((it) => ({
-      item_id: it.id,
-      expense_id: expense.id,
-      guest_name: data.guest_name.trim(),
-      quantity: it.quantity ?? 1,
-      amount: Number(it.price) * (it.quantity ?? 1),
-    }));
-
-    const { data: inserted, error } = await supabaseAdmin
-      .from("item_claims")
-      .insert(rows)
-      .select("id, item_id, amount");
-    if (error) throw new Error(error.message);
-
-    if (expense.claim_mode === "first_come") {
-      await supabaseAdmin
-        .from("expense_items")
-        .update({ locked: true })
-        .in("id", data.item_ids);
-    }
-
-    return {
-      claim_ids: inserted?.map((r) => r.id) ?? [],
-      total: rows.reduce((a, r) => a + r.amount, 0),
-    };
+    
+    return result;
   });
 
 const PayClaimsSchema = z.object({
@@ -276,73 +114,24 @@ const PayClaimsSchema = z.object({
   reference: z.string().max(120).optional(),
 });
 
-/**
- * Mock payment — flips claims to paid and (if the receipt owner chose wallet
- * payout) credits the owner's in-app wallet.
- */
 export const guestPayClaims = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => PayClaimsSchema.parse(input))
+  .validator((input: unknown) => PayClaimsSchema.parse(input))
   .handler(async ({ data }) => {
-    const { link, supabaseAdmin } = await loadLink(data.token);
-    if (link.resource_type !== "expense") throw new Error("Pay only works on expense links");
-
-    const { data: claims } = await supabaseAdmin
-      .from("item_claims")
-      .select("id, amount, paid, expense_id")
-      .in("id", data.claim_ids);
-    if (!claims || claims.length === 0) throw new Error("Claims not found");
-    if (claims.some((c) => c.expense_id !== link.resource_id)) {
-      throw new Error("Claim does not belong to this link");
-    }
-
-    const unpaid = claims.filter((c) => !c.paid);
-    if (unpaid.length === 0) return { ok: true, total: 0, method: data.method };
-
-    await new Promise((r) => setTimeout(r, 900));
-
-    const now = new Date().toISOString();
-    const methodTag = data.reference ? `${data.method}:${data.reference}` : data.method;
-    await supabaseAdmin
-      .from("item_claims")
-      .update({ paid: true, paid_at: now, payment_method: methodTag })
-      .in("id", unpaid.map((c) => c.id));
-
-    const total = unpaid.reduce((a, c) => a + Number(c.amount), 0);
-
-    // Credit owner's wallet if they chose wallet payout
-    const { data: exp } = await supabaseAdmin
-      .from("expenses")
-      .select("paid_by_user_id, payout_destination, description")
-      .eq("id", link.resource_id)
-      .maybeSingle();
-
-    if (exp && exp.payout_destination === "wallet" && exp.paid_by_user_id) {
-      const { data: wallet } = await supabaseAdmin
-        .from("wallets")
-        .select("balance")
-        .eq("user_id", exp.paid_by_user_id)
-        .maybeSingle();
-      const current = Number(wallet?.balance ?? 0);
-      if (wallet) {
-        await supabaseAdmin
-          .from("wallets")
-          .update({ balance: current + total, updated_at: now })
-          .eq("user_id", exp.paid_by_user_id);
-      } else {
-        await supabaseAdmin
-          .from("wallets")
-          .insert({ user_id: exp.paid_by_user_id, balance: total, currency: "UGX" });
-      }
-      await supabaseAdmin.from("wallet_transactions").insert({
-        user_id: exp.paid_by_user_id,
-        amount: total,
-        kind: "credit",
-        description: `Payment for "${exp.description}"`,
-        reference: methodTag,
-        expense_id: link.resource_id,
-        status: "completed",
+    // ✅ Use RPC instead of supabaseAdmin
+    const { supabase } = await import("@/integrations/supabase/client");
+    
+    const { data: result, error } = await supabase
+      .rpc('pay_claims_guest', {
+        p_token: data.token,
+        p_claim_ids: data.claim_ids,
+        p_method: data.method,
+        p_reference: data.reference || null
       });
+    
+    if (error) {
+      console.error('[Share] ❌ RPC error:', error);
+      throw new Error(error.message);
     }
-
-    return { ok: true, total, method: data.method };
+    
+    return result;
   });
