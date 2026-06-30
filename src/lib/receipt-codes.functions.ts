@@ -3,8 +3,8 @@ import { z } from "zod";
 
 /**
  * Public receipt lookup by 6-character share code.
- * No login required. Uses admin client and returns sanitized fields only.
- * Codes expire 5 minutes after creation — expired codes return null.
+ * Uses the new SECURITY DEFINER RPC `share_get_by_code` — works with anon key,
+ * no service role required.
  */
 
 const CodeSchema = z.object({
@@ -18,43 +18,25 @@ const CodeSchema = z.object({
 export const getExpenseByCode = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => CodeSchema.parse(input))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const { data: link, error: linkErr } = await supabaseAdmin
-      .from("shared_links")
-      .select("token, resource_type, resource_id, expires_at")
-      .eq("share_code", data.code)
-      .eq("resource_type", "expense")
-      .maybeSingle();
-
-    if (linkErr) throw new Error(linkErr.message);
-    if (!link) return null;
-    if (link.expires_at && new Date(link.expires_at) < new Date()) return null;
-
-    const { data: expense } = await supabaseAdmin
-      .from("expenses")
-      .select(
-        "id, description, amount, currency, expense_date, category, archived_at",
-      )
-      .eq("id", link.resource_id)
-      .maybeSingle();
-
-    if (!expense || expense.archived_at) return null;
-
-    const { data: items } = await supabaseAdmin
-      .from("expense_items")
-      .select("id, name, price, quantity")
-      .eq("expense_id", expense.id)
-      .order("sort_order", { ascending: true });
-
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data: result, error } = await supabase.rpc("share_get_by_code", {
+      p_code: data.code,
+    });
+    if (error) {
+      // Treat "not found" / "expired" as null so the UI can render gracefully
+      if (/not found|expired|invalid/i.test(error.message)) return null;
+      throw new Error(error.message);
+    }
+    if (!result || (result as any).type !== "expense") return null;
+    const r = result as any;
     return {
-      id: expense.id,
-      description: expense.description,
-      total: Number(expense.amount),
-      currency: expense.currency,
-      expense_date: expense.expense_date,
-      merchant: expense.category,
-      items: items ?? [],
-      token: link.token,
+      id: r.expense.id,
+      description: r.expense.description,
+      total: Number(r.expense.amount),
+      currency: r.expense.currency,
+      expense_date: r.expense.expense_date,
+      merchant: r.expense.category,
+      items: r.items ?? [],
+      token: r.token,
     };
   });

@@ -28,14 +28,24 @@ async function loadLink(token: string) {
 
 async function loadPayerPaymentInfo(supabaseAdmin: any, expensePayerUserId: string | null) {
   if (!expensePayerUserId) return null;
-  const { data } = await supabaseAdmin
-    .from("profiles")
-    .select(
-      "display_name, momo_provider, momo_number, momo_name, bank_name, bank_account_number, bank_account_name",
-    )
-    .eq("id", expensePayerUserId)
-    .maybeSingle();
-  return data ?? null;
+  // Fetch display name from profiles + payment methods (display-safe fields only)
+  const [{ data: profile }, { data: methods }] = await Promise.all([
+    supabaseAdmin
+      .from("profiles")
+      .select("display_name")
+      .eq("id", expensePayerUserId)
+      .maybeSingle(),
+    supabaseAdmin
+      .from("payment_methods")
+      .select("id, kind, label, display_hint, account_name, bank_name, is_default")
+      .eq("user_id", expensePayerUserId)
+      .order("is_default", { ascending: false }),
+  ]);
+  if (!profile && !methods) return null;
+  return {
+    display_name: profile?.display_name ?? null,
+    payment_methods: methods ?? [],
+  };
 }
 
 /** Resolve a 6-character share code to the canonical share token. */

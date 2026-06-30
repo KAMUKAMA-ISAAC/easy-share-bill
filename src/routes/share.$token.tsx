@@ -462,7 +462,11 @@ function ItemClaimSection({
             amount={selectedTotal}
             currency={expense.currency}
             method={method as "mtn_momo" | "airtel_money"}
-            payeeName={payerPayment?.momo_name ?? payerPayment?.display_name ?? "Splitit organiser"}
+            payeeName={(() => {
+              const methods = (payerPayment as any)?.payment_methods ?? [];
+              const m = methods.find((x: any) => x.kind === method);
+              return m?.account_name ?? m?.label ?? (payerPayment as any)?.display_name ?? "Splitit organiser";
+            })()}
           />
         )}
       </>
@@ -604,44 +608,52 @@ function PayPanel({
   onPay: () => void;
   pending: boolean;
 }) {
+  const methods = (payerPayment as any)?.payment_methods ?? [];
+  const mtnMethod = methods.find((m: any) => m.kind === "mtn_momo");
+  const airtelMethod = methods.find((m: any) => m.kind === "airtel_money");
+  const bankMethod = methods.find((m: any) => m.kind === "bank");
+
   const options = [
     {
       id: "mtn_momo" as const,
       label: "MTN Mobile Money",
       icon: Smartphone,
-      hint: payerPayment?.momo_provider === "mtn_momo" ? payerPayment.momo_number : null,
+      hint: mtnMethod?.display_hint ?? null,
+      available: !!mtnMethod,
     },
     {
       id: "airtel_money" as const,
       label: "Airtel Money",
       icon: Smartphone,
-      hint: payerPayment?.momo_provider === "airtel_money" ? payerPayment.momo_number : null,
+      hint: airtelMethod?.display_hint ?? null,
+      available: !!airtelMethod,
     },
     {
       id: "bank_transfer" as const,
       label: "Bank / Card",
       icon: Landmark,
-      hint: payerPayment?.bank_account_number ?? null,
+      hint: bankMethod?.display_hint ?? null,
+      available: !!bankMethod,
     },
   ];
 
   const recipient =
     method === "bank_transfer"
       ? {
-          line1: payerPayment?.bank_name || "Bank not set by organiser",
-          line2: payerPayment?.bank_account_number
-            ? `${payerPayment.bank_account_number} · ${payerPayment.bank_account_name ?? ""}`
+          line1: bankMethod?.bank_name || "Bank not set by organiser",
+          line2: bankMethod?.display_hint
+            ? `${bankMethod.display_hint}${bankMethod.account_name ? ` · ${bankMethod.account_name}` : ""}`
             : "Use any card — funds route via mock processor",
         }
       : {
-          line1:
-            payerPayment?.momo_provider === method
-              ? payerPayment.momo_name ?? "Recipient"
-              : "Organiser hasn't set this method",
-          line2:
-            payerPayment?.momo_provider === method
-              ? payerPayment.momo_number ?? ""
-              : "Pick another method or notify them",
+          line1: (() => {
+            const m = method === "mtn_momo" ? mtnMethod : airtelMethod;
+            return m?.account_name ?? m?.label ?? "Organiser hasn't set this method";
+          })(),
+          line2: (() => {
+            const m = method === "mtn_momo" ? mtnMethod : airtelMethod;
+            return m?.display_hint ?? "Pick another method or notify them";
+          })(),
         };
 
   return (
