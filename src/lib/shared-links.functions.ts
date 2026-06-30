@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * Public guest access via secure tokens.
@@ -8,6 +9,26 @@ import { z } from "zod";
  */
 
 const TokenSchema = z.object({ token: z.string().min(8).max(200) });
+
+/** Get Supabase client for server use (uses process.env) */
+function getSupabaseClient() {
+  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  
+  if (!url || !key) {
+    console.error('[Share] ❌ Missing Supabase environment variables');
+    console.error('[Share] SUPABASE_URL:', !!url);
+    console.error('[Share] SUPABASE_PUBLISHABLE_KEY:', !!key);
+    throw new Error('Supabase configuration missing');
+  }
+  
+  return createClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+}
 
 /** Resolve a 6-character share code to the canonical share token. */
 const CodeSchema = z.object({
@@ -21,13 +42,15 @@ const CodeSchema = z.object({
 export const resolveShareCode = createServerFn({ method: "POST" })
   .validator((input: unknown) => CodeSchema.parse(input))
   .handler(async ({ data }) => {
-    // ✅ Use RPC instead of supabaseAdmin
-    const { supabase } = await import("@/integrations/supabase/client");
+    const supabase = getSupabaseClient();
     
     const { data: link, error } = await supabase
       .rpc('resolve_share_code', { p_code: data.code });
     
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('[Share] ❌ RPC error:', error);
+      throw new Error(error.message);
+    }
     if (!link) throw new Error("No receipt matches that code");
     return { token: link as string };
   });
@@ -35,8 +58,7 @@ export const resolveShareCode = createServerFn({ method: "POST" })
 export const getSharedExpense = createServerFn({ method: "GET" })
   .validator((input: unknown) => TokenSchema.parse(input))
   .handler(async ({ data }) => {
-    // ✅ Use RPC instead of supabaseAdmin
-    const { supabase } = await import("@/integrations/supabase/client");
+    const supabase = getSupabaseClient();
     
     const { data: result, error } = await supabase
       .rpc('get_shared_expense_by_token', { p_token: data.token });
@@ -62,8 +84,7 @@ const MarkPaidSchema = z.object({
 export const guestMarkSplitPaid = createServerFn({ method: "POST" })
   .validator((input: unknown) => MarkPaidSchema.parse(input))
   .handler(async ({ data }) => {
-    // ✅ Use RPC instead of supabaseAdmin
-    const { supabase } = await import("@/integrations/supabase/client");
+    const supabase = getSupabaseClient();
     
     const { data: result, error } = await supabase
       .rpc('mark_split_paid_guest', {
@@ -89,8 +110,7 @@ const ClaimSchema = z.object({
 export const guestClaimItems = createServerFn({ method: "POST" })
   .validator((input: unknown) => ClaimSchema.parse(input))
   .handler(async ({ data }) => {
-    // ✅ Use RPC instead of supabaseAdmin
-    const { supabase } = await import("@/integrations/supabase/client");
+    const supabase = getSupabaseClient();
     
     const { data: result, error } = await supabase
       .rpc('claim_items_guest', {
@@ -117,8 +137,7 @@ const PayClaimsSchema = z.object({
 export const guestPayClaims = createServerFn({ method: "POST" })
   .validator((input: unknown) => PayClaimsSchema.parse(input))
   .handler(async ({ data }) => {
-    // ✅ Use RPC instead of supabaseAdmin
-    const { supabase } = await import("@/integrations/supabase/client");
+    const supabase = getSupabaseClient();
     
     const { data: result, error } = await supabase
       .rpc('pay_claims_guest', {
