@@ -47,7 +47,7 @@ function AppShell() {
     user.email?.split("@")[0] ||
     "You";
 
-  const avatarUrl = profile?.avatar_url;
+  const avatarUrl = profile?.avatar_signed_url;
 
   const navItems = [
     { to: "/dashboard", icon: LayoutDashboard, label: "Home" },
